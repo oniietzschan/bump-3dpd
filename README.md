@@ -1,6 +1,6 @@
 # bump-3dpd.lua
 
-[![Build Status](https://travis-ci.org/kikito/bump.lua.svg?branch=master)](https://travis-ci.org/kikito/bump.lua)
+[![Build Status](https://travis-ci.org/oniietzschan/bump-3dpd.lua.svg?branch=master)](https://travis-ci.org/oniietzschan/bump-3dpd.lua)
 [![Coverage Status](https://coveralls.io/repos/github/kikito/bump.lua/badge.svg?branch=master)](https://coveralls.io/github/kikito/bump.lua?branch=master)
 
 Lua collision-detection library for axis-aligned cubes. Its main features are:
