@@ -1,7 +1,6 @@
-local bump = require 'bump'
+local bump = require 'bump-3dpd'
 
 describe('bump', function()
-
   describe('newWorld', function()
     it('creates a world', function()
       assert.truthy(bump.newWorld())
@@ -20,5 +19,4 @@ describe('bump', function()
       assert.error(function() bump.newWorld("") end)
     end)
   end)
-
 end)

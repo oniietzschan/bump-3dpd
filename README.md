@@ -1,26 +1,26 @@
-# bump.lua
+# bump-3dpd.lua
 
 [![Build Status](https://travis-ci.org/kikito/bump.lua.svg?branch=master)](https://travis-ci.org/kikito/bump.lua)
 [![Coverage Status](https://coveralls.io/repos/github/kikito/bump.lua/badge.svg?branch=master)](https://coveralls.io/github/kikito/bump.lua?branch=master)
 
-Lua collision-detection library for axis-aligned rectangles. Its main features are:
+Lua collision-detection library for axis-aligned cubes. Its main features are:
 
-* bump.lua only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (circles, polygons, etc.) give [HardonCollider](https://github.com/vrld/HardonCollider) a look.
+* bump-3dpd.lua only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (spheres, meshes, etc.) then you're out of luck, pal.
 * Handles tunnelling - all items are treated as "bullets". The fact that we only use AABBs allows doing this fast.
 * Strives to be fast while being economic in memory
 * It's centered on *detection*, but it also offers some (minimal & basic) *collision response*
-* Can also return the items that touch a point, a segment or a rectangular zone.
-* bump.lua is _gameistic_ instead of realistic.
+* Can also return the items that touch a point, a segment or a cubic zone.
+* bump-3dpd.lua is _gameistic_ instead of realistic.
 
 The demos are LÖVE based, but this library can be used in any Lua-compatible environment.
 
-`bump` is ideal for:
+`bump-3dpd` is ideal for:
 
-* Tile-based games, and games where most entities can be represented as axis-aligned rectangles.
+* Tile-based games, and games where most entities can be represented as axis-aligned cubes.
 * Games which require some physics, but not a full realistic simulation - like a platformer.
-* Examples of genres: top-down games (Zelda), Shoot-them-ups, fighting games (Street Fighter), platformers (Super Mario).
+* Examples of genres: top-down games (Zelder), Shoot-those-ups, fighting games (Arcana Heart), platformers (Jumpman).
 
-`bump` is not a good match for:
+`bump-3dpd` is not a good match for:
 
 * Games that require polygons for the collision detection
 * Games that require highly realistic simulations of physics - things "stacking up", "rolling over slides", etc.
@@ -31,35 +31,35 @@ The demos are LÖVE based, but this library can be used in any Lua-compatible en
 
 ```lua
 
-local bump = require 'bump'
+local bump = require 'bump-3dpd'
 
 -- The grid cell size can be specified via the initialize method
 -- By default, the cell size is 64
 local world = bump.newWorld(50)
 
--- create two rectangles
+-- create two cubes
 local A = {name="A"}
 local B = {name="B"}
 
--- insert both rectangles into bump
-world:add(A,   0, 0,    64, 256) -- x,y, width, height
-world:add(B,   0, -100, 32, 32)
+-- insert both cubes into bump
+world:add(A, 0,    0, 0, 64, 256, 64) -- x,y,z, width, height, depth
+world:add(B, 0, -100, 0, 32,  32, 32)
 
--- Try to move B to 0,64. If it collides with A, "slide over it"
-local actualX, actualY, cols, len = world:move(B, 0,64)
+-- Try to move B to 0,64,0. If it collides with A, "slide over it"
+local actualX, actualY, cols, len = world:move(B, 0, 64, 0)
 
--- prints "Attempted to move to 0,64, but ended up in 0,-32 due to 1 collisions"
+-- prints "Attempted to move to 0,64,0 but ended up in 0,-32,0 due to 1 collisions"
 if len > 0 then
-  print(("Attempted to move to 0,64, but ended up in %d,%d due to %d collisions"):format(actualX, actualY, len))
+  print(("Attempted to move to 0,64,0 but ended up in %d,%d,%d due to %d collisions"):format(actualX, actualY, actualZ, len))
 else
-  print("Moved B to 100,100 without collisions")
+  print("Moved B to 0, 64, 0 without collisions")
 end
 
--- prints the new coordinates of B: 0, -32, 32, 32
-print(world:getRect(B))
+-- prints the new coordinates of B: 0, -32, 0, 32, 32, 32
+print(world:getCube(B))
 
 -- prints "Collision with A"
-for i=1,len do -- If more than one simultaneous collision, they are sorted out by proximity
+for i = 1, len do -- If more than one simultaneous collision, they are sorted out by proximity
   local col = cols[i]
   print(("Collision with %s."):format(col.other.name))
 end
@@ -91,11 +91,11 @@ You will need [LÖVE](http://love2d.org) in order to try any of them.
 ### Requiring the library
 
 ``` lua
-local bump = require 'bump'
+local bump = require 'bump-3dpd'
 ```
 
 The following methods (`bump.newWorld`, `world:add`, `world:remove`, `world:update`, `world:move` & `world:check`) are *basic* for
-working with bump, as well as the 4 collision responses. If you want to use bump.lua effectively, you will need to understand at least
+working with bump, as well as the 4 collision responses. If you want to use bump-3dpd.lua effectively, you will need to understand at least
 these.
 
 ### Creating a world
@@ -127,10 +127,10 @@ world:add(item, x,y,w,h)
 a tile, a missile etc. In fact, you can insert items that don't participate in the collision at all - like puffs of smoke or background tiles. This
 can be handy if you want to use the bump world as a spatial database in addition to a collision detector (see the "queries section" below for mode details).
 
-Each `item` will have an associated "rectangle" in the `world`.
+Each `item` will have an associated "cube" in the `world`.
 
 * `item` is the new item being inserted (usually a table representing a game object, like `player` or `ground_tile`).
-* `x,y,w,h`: the rectangle associated to `item` in the world. They are all mandatory. `w` & `h` are the "width" and "height"
+* `x,y,w,h`: the cube associated to `item` in the world. They are all mandatory. `w` & `h` are the "width" and "height"
   of the box. `x` and `y` depend on the host system's coordinate system. For example, in [LÖVE](http://love2d.org) &
   [Corona SDK](http://coronalabs.com/products/corona-sdk/) they represent "left" & "top", while in [Cocos2d-x](http://cocos2d-x.org/wiki/Lua)
   they represent "left" & "bottom".
@@ -146,7 +146,7 @@ If you try to add an item to a world that already contains it, you will get an e
 world:remove(item)
 ```
 
-bump.lua stores *hard references* to any items that you add (with `world:add`). If you decide that a item is no longer necessary, in addition to removing it
+bump-3dpd.lua stores *hard references* to any items that you add (with `world:add`). If you decide that a item is no longer necessary, in addition to removing it
 from your "entity list", you must also remove it from the world using `world:remove`. Otherwise it will still be there, and other objects might still collide
 with it.
 
@@ -155,7 +155,7 @@ with it.
 Once removed from the world, the item will stop existing in that world. It won't trigger any collisions with other objects any more. Attempting to move it
 with `world:move` or checking collisions with `world:check` will raise an error.
 
-It is ok to remove an object from the world and later add it again. In fact, some bump methods do this internally.
+It is ok to remove an object from the world and later add it again. In fact, some bump-3dpd methods do this internally.
 
 This method returns nothing.
 
@@ -166,12 +166,12 @@ world:update(item, x,y,<w>,<h>)
 ```
 
 Even if your "player" has attributes like `player.x` and `player.y`, changing those will not automatically change them inside `world`. `update` is one of
-the ways to do so: it changes the rect representing `item` inside `world`.
+the ways to do so: it changes the cube representing `item` inside `world`.
 
 * `item` must be something previously inserted in the world with `world:add(item, l,t,w,h)`. Otherwise, `world:update` will raise an error.
 * `x,y,w,h` the new dimensions of `item`. `x` and `y` are mandatory. `w` and `h` will default to the values the world already had for `item`.
 
-This method always changes the rect associated to `item`, ignoring all collisions (use `world:move` for that). It returns nothing.
+This method always changes the cube associated to `item`, ignoring all collisions (use `world:move` for that). It returns nothing.
 
 You may use `world:update` if you want to "teleport" your items around. A lot of time, however, you want to move them taking collisions into account.
 In order to do that, you have `world:move`.
@@ -183,7 +183,7 @@ In order to do that, you have `world:move`.
 local actualX, actualY, cols, len = world:move(item, goalX, goalY, <filter>)
 ```
 
-This is probably the most useful method of bump. It moves the item inside the world towards a desired position, but taking collisions into account.
+This is probably the most useful method of bump-3dpd. It moves the item inside the world towards a desired position, but taking collisions into account.
 
 * `item` must be something previously inserted in the world with `world:add(item, l,t,w,h)`. Otherwise, `world:move` will raise an error.
 * `goalX, goalY` are the *desired* `x` and `y` coordinates. The item will end up in those coordinates if it doesn't collide with anything.
@@ -237,7 +237,7 @@ For example, imagine a player which collides on the same frame with a coin first
 
 The first two can be handled just by using `col.other`, but "aligning the player with the ground" requires *collision resolution*.
 
-bump.lua comes with 4 built-in ways to handle collisions: `touch`, `cross`, `slide` & `bounce`. You can select which one is used on each collision by returning
+bump-3dpd.lua comes with 4 built-in ways to handle collisions: `touch`, `cross`, `slide` & `bounce`. You can select which one is used on each collision by returning
 their name in the `filter` param of `world:move` or `world:check`. You can also choose to ignore a collision by returning `nil` or `false`.
 
 ![touch](img/touch.png)
@@ -255,7 +255,7 @@ Collisions of this type have their `type` attribute set to `"cross"` and don't h
 
 ![slide](img/slide.png)
 
-This is the default collision type used in bump. It's what you want to use for solid objects which "slide over other objects", like Super Mario does over a platform or the ground.
+This is the default collision type used in bump-3dpd. It's what you want to use for solid objects which "slide over other objects", like Super Mario does over a platform or the ground.
 
 Collisions of this type have their `type` attribute set to `"slide"`. They also have a special attribute called `col.slide`, which is a 2d vector with two components: `col.slide.x` &
 `col.slide.y`. It represents the x and y coordinates to which the `item` "attempted to slide to". They are different from `actualX` & `actualY` since other collisions later on can
@@ -324,7 +324,7 @@ The equivalent code to the previous example using `check` would be:
 function movePlayer(player, dt)
   local goalX, goalY = player.vx * dt, player.vy * dt
   local actualX, actualY, cols, len = world:check(player, goalX, goalY)
-  world:update(player, actualX, actualY) -- update the player's rectangle in the world
+  world:update(player, actualX, actualY) -- update the player's cube in the world
   player.x, player.y = actualX, actualY
   ... <deal with the collisions as before>
 end
@@ -348,8 +348,8 @@ cols[i] = {
   move      = Vector({x=number,y=number}). The difference between the original coordinates and the actual ones.
   normal    = Vector({x=number,y=number}). The collision normal; usually -1,0 or 1 in `x` and `y`
   touch     = Vector({x=number,y=number}). The coordinates where item started touching other
-  itemRect  = The rectangle item occupied when the touch happened({x = N, y = N, w = N, h = N})
-  otherRect = The rectangle other occupied when the touch happened({x = N, y = N, w = N, h = N})
+  itemCube  = The cube item occupied when the touch happened({x = N, y = N, w = N, h = N})
+  otherCube = The cube other occupied when the touch happened({x = N, y = N, w = N, h = N})
 }
 ```
 
@@ -363,16 +363,16 @@ For example, `cols[i].normal` could be used to "detect if a player is on ground 
 
 ## Intermediate API - Querying the world
 
-The following methods are required for basic usage of bump.lua, but are quite handy, and you would be missing out some
+The following methods are required for basic usage of bump-3dpd.lua, but are quite handy, and you would be missing out some
 nice features of this lib if you were not using it.
 
 Sometimes it is desirable to know "which items are in a certain area". This is called "querying the world".
 
-Bump allows querying the world via a point, a rectangular zone, and a straight line segment.
+Bump-3dpd allows querying the world via a point, a cubic zone, and a straight line segment.
 
 This makes it useful not only as a collision detection library, but also as a lightweight spatial dictionary. In particular,
-you can use bump to "only draw the things that are needed" on the screen. In order to do this, you would have to add all your
-"visible" objects into bump, even if they don't collide with anything (this is usually ok, just ignore them with your filters when
+you can use bump-3dpd to "only draw the things that are needed" on the screen. In order to do this, you would have to add all your
+"visible" objects into bump-3dpd, even if they don't collide with anything (this is usually ok, just ignore them with your filters when
 you do the collisions).
 
 ### Querying with a point
@@ -391,19 +391,19 @@ It is useful for things like clicking with the mouse and getting the items affec
   `false` or `nil` on `filter(item)`. By default, all items touched by the point are returned.
 * `len` is the length of the items list. It is equivalent to `#items`, but it's slightly faster to use `len` instead.
 
-### Querying with a rectangle
+### Querying with a cube
 
 ``` lua
-local items, len = world:queryRect(l,t,w,h, filter)
+local items, len = world:queryCube(l,t,w,h, filter)
 ```
-Returns the items that touch a given rectangle.
+Returns the items that touch a given cube.
 
 Useful for things like selecting what to display on the screen, as mentioned above, or selecting a group of units with the mouse in a strategy game.
 
-* `l,t,w,h` is a rectangle. The items that intersect with it will be returned.
+* `l,t,w,h` is a cube. The items that intersect with it will be returned.
 * `filter` is an optional function. When provided, it is used to "filter out" which items are returned - if `filter(item)` returns
   `false` or `nil`, that item is ignored. By default, all items are included.
-* `items` is a list of items, like in `world:queryPoint`. But instead of for a point `x,y` for a rectangle `l,t,w,h`.
+* `items` is a list of items, like in `world:queryPoint`. But instead of for a point `x,y` for a cube `l,t,w,h`.
 * `len` is equivalent to `#items`
 
 ### Querying with a segment
@@ -432,7 +432,7 @@ An extended version of `world:querySegment` which returns the collision points o
 in addition to the items.
 
 It is useful if you need to **actually show** the lasers/bullets or if you need to show some impact effects (i.e. spawning some particles
-where a bullet hits a wall). If you don't need the actual points of contact between the segment and the bounding rectangles, use
+where a bullet hits a wall). If you don't need the actual points of contact between the segment and the bounding cubes, use
 `world:querySegment`, since it's faster.
 
 * `x1,y1,x2,y2,filter` same as in `world:querySegment`
@@ -469,9 +469,9 @@ Builds and returns an array containing all the items in the world (as well as it
 doing any queries. Notice that in which the items will be returned is non-deterministic.
 
 ``` lua
-local x,y,w,h = world:getRect(item)
+local x,y,w,h = world:getCube(item)
 ```
-Given an item, obtain the coordinates of its bounding rect. Useful for debugging/testing things.
+Given an item, obtain the coordinates of its bounding cube. Useful for debugging/testing things.
 
 ``` lua
 local cell_count = world:countCells()
@@ -483,7 +483,7 @@ Returns the number of cells being used. Useful for testing/debugging.
 local cx,cy = world:toCell(x,y)
 ```
 
-Given a point, return the coordinates of the cell that containg it using the world's `cellSize`. Useful mostly for debugging bump, or drawing
+Given a point, return the coordinates of the cell that containg it using the world's `cellSize`. Useful mostly for debugging bump-3dpd, or drawing
 debug info.
 
 ``` lua
@@ -496,12 +496,11 @@ The inverse of `world:toCell`. Given the coordinates of a cell, return the coord
 local cols, len = world:project(item, x,y,w,h, goalX, goalY, filter)
 ```
 
-Moves a the given imaginary rectangle towards goalX and goalY, providing a list of collisions as they happen *in that straight path*.
+Moves a the given imaginary cube towards goalX and goalY, providing a list of collisions as they happen *in that straight path*.
 
 This method is useful mostly when creating new collision responses, although it could be also used as a query method.
 
-You could use this method to implement your own collision response algorithm (this was the only way to
-do it in prevous versions of bump)
+You could use this method to implement your own collision response algorithm.
 
 ```lua
 bump.responses.touch
@@ -510,7 +509,7 @@ bump.responses.slide
 bump.responses.bounce
 ```
 
-These are the functions bump uses to resolve collisions by default. You can use these functions' source as a base to build your own response function, if you feel adventurous.
+These are the functions bump-3dpd uses to resolve collisions by default. You can use these functions' source as a base to build your own response function, if you feel adventurous.
 
 ```lua
 world:addResponse(name, response)
@@ -521,42 +520,39 @@ response `'foo'`, if your filter returns `'foo'` in a collision your world will 
 will have to read the source code of the default responses in order to know how to do that.
 
 ```lua
-bump.rect.getNearestCorner
-bump.rect.getSegmentIntersectionIndices
-bump.rect.getDiff
-bump.rect.containsPoint
-bump.rect.isIntersecting
-bump.rect.getSquareDistance
-bump.rect.detectCollision
+bump.cube.getNearestCorner
+bump.cube.getSegmentIntersectionIndices
+bump.cube.getDiff
+bump.cube.containsPoint
+bump.cube.isIntersecting
+bump.cube.getSquareDistance
+bump.cube.detectCollision
 ```
 
-bump.lua comes with some rectangle-related functions in the `bump.rect` namespace. These are **not** part of the official API and can change at any moment. However, feel free to
+bump-3dpd.lua comes with some cube-related functions in the `bump.cube` namespace. These are **not** part of the official API and can change at any moment. However, feel free to
 use them if you are implementing your own collision responses.
 
 ## Installation
 
-Just copy the bump.lua file wherever you want it. Then require it where you need it:
+Just copy the bump-3dpd.lua file wherever you want it. Then require it where you need it:
 
 ``` lua
-local bump = require 'bump'
+local bump = require 'bump-3dpd'
 ```
 
-If you copied bump.lua to a file not accesible from the root folder (for example a lib folder), change the code accordingly:
+If you copied bump-3dpd.lua to a file not accesible from the root folder (for example a lib folder), change the code accordingly:
 
 ``` lua
-local bump = require 'lib.bump'
+local bump = require 'lib.bump-3dpd'
 ```
-
-Please make sure that you read the license, too (for your convenience it's now included at the beginning of the bump.lua file.
 
 ## License
 
-bump.lua is licensed under the MIT license.
+bump-3dpd.lua is licensed under the MIT license.
 
 ## Specs
 
 Specs for this project can be run using [busted](http://olivinelabs.com/busted).
-
 
 ## Changelog
 
