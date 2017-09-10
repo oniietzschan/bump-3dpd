@@ -1,16 +1,16 @@
-# bump-3dpd.lua
+# bump-3dpd
 
-[![Build Status](https://travis-ci.org/oniietzschan/bump-3dpd.lua.svg?branch=master)](https://travis-ci.org/oniietzschan/bump-3dpd.lua)
-[![Coverage Status](https://coveralls.io/repos/github/kikito/bump.lua/badge.svg?branch=master)](https://coveralls.io/github/kikito/bump.lua?branch=master)
+[![Build Status](https://travis-ci.org/oniietzschan/bump-3dpd.svg?branch=master)](https://travis-ci.org/oniietzschan/bump-3dpd)
+[![Coverage Status](https://codecov.io/gh/oniietzschan/bump-3dpd/branch/master/graph/badge.svg)](https://codecov.io/gh/oniietzschan/bump-3dpd)
 
 Lua collision-detection library for axis-aligned cubes. Its main features are:
 
-* bump-3dpd.lua only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (spheres, meshes, etc.) then you're out of luck, pal.
+* bump-3dpd only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (spheres, meshes, etc.) then you're out of luck, pal.
 * Handles tunnelling - all items are treated as "bullets". The fact that we only use AABBs allows doing this fast.
 * Strives to be fast while being economic in memory
 * It's centered on *detection*, but it also offers some (minimal & basic) *collision response*
 * Can also return the items that touch a point, a segment or a cubic zone.
-* bump-3dpd.lua is _gameistic_ instead of realistic.
+* bump-3dpd is _gameistic_ instead of realistic.
 
 The demos are LÖVE based, but this library can be used in any Lua-compatible environment.
 
@@ -95,7 +95,7 @@ local bump = require 'bump-3dpd'
 ```
 
 The following methods (`bump.newWorld`, `world:add`, `world:remove`, `world:update`, `world:move` & `world:check`) are *basic* for
-working with bump, as well as the 4 collision responses. If you want to use bump-3dpd.lua effectively, you will need to understand at least
+working with bump, as well as the 4 collision responses. If you want to use bump-3dpd effectively, you will need to understand at least
 these.
 
 ### Creating a world
@@ -146,7 +146,7 @@ If you try to add an item to a world that already contains it, you will get an e
 world:remove(item)
 ```
 
-bump-3dpd.lua stores *hard references* to any items that you add (with `world:add`). If you decide that a item is no longer necessary, in addition to removing it
+bump-3dpd stores *hard references* to any items that you add (with `world:add`). If you decide that a item is no longer necessary, in addition to removing it
 from your "entity list", you must also remove it from the world using `world:remove`. Otherwise it will still be there, and other objects might still collide
 with it.
 
@@ -237,7 +237,7 @@ For example, imagine a player which collides on the same frame with a coin first
 
 The first two can be handled just by using `col.other`, but "aligning the player with the ground" requires *collision resolution*.
 
-bump-3dpd.lua comes with 4 built-in ways to handle collisions: `touch`, `cross`, `slide` & `bounce`. You can select which one is used on each collision by returning
+bump-3dpd comes with 4 built-in ways to handle collisions: `touch`, `cross`, `slide` & `bounce`. You can select which one is used on each collision by returning
 their name in the `filter` param of `world:move` or `world:check`. You can also choose to ignore a collision by returning `nil` or `false`.
 
 ![touch](img/touch.png)
@@ -267,9 +267,6 @@ A good example of this behavior is Arkanoid's ball; you can use this type of col
 
 Collisions of this type have their `type` attribute set to `"bounce"`. They also have a special attributes called `col.bounce`. It is a 2d vector which represents the x and y
 coordinates to which the `item` "attempted to bounce".
-
-The [Grenades](https://github.com/kikito/bump.lua/blob/demo/entities/grenade.lua) and the [Debris](https://github.com/kikito/bump.lua/blob/demo/entities/debris.lua) in the
-demo use `"bounce"` to resolve their collisions.
 
 Here's an example of a filter displaying all these behaviors:
 
@@ -363,8 +360,7 @@ For example, `cols[i].normal` could be used to "detect if a player is on ground 
 
 ## Intermediate API - Querying the world
 
-The following methods are required for basic usage of bump-3dpd.lua, but are quite handy, and you would be missing out some
-nice features of this lib if you were not using it.
+The following methods are required for basic usage of bump-3dpd, but are quite handy, and you would be missing out some nice features of this lib if you were not using it.
 
 Sometimes it is desirable to know "which items are in a certain area". This is called "querying the world".
 
@@ -529,18 +525,18 @@ bump.cube.getSquareDistance
 bump.cube.detectCollision
 ```
 
-bump-3dpd.lua comes with some cube-related functions in the `bump.cube` namespace. These are **not** part of the official API and can change at any moment. However, feel free to
+bump-3dpd comes with some cube-related functions in the `bump.cube` namespace. These are **not** part of the official API and can change at any moment. However, feel free to
 use them if you are implementing your own collision responses.
 
 ## Installation
 
-Just copy the bump-3dpd.lua file wherever you want it. Then require it where you need it:
+Just copy the `bump-3dpd.lua` file wherever you want it. Then require it where you need it:
 
 ``` lua
 local bump = require 'bump-3dpd'
 ```
 
-If you copied bump-3dpd.lua to a file not accesible from the root folder (for example a lib folder), change the code accordingly:
+If you copied `bump-3dpd.lua` to a file not accesible from the root folder (for example a lib folder), change the code accordingly:
 
 ``` lua
 local bump = require 'lib.bump-3dpd'
@@ -548,7 +544,7 @@ local bump = require 'lib.bump-3dpd'
 
 ## License
 
-bump-3dpd.lua is licensed under the MIT license.
+bump-3dpd is licensed under the MIT license.
 
 ## Specs
 

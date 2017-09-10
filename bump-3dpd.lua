@@ -1,7 +1,7 @@
 local bump = {
-  _VERSION     = 'bump v3.1.7',
-  _URL         = 'https://github.com/kikito/bump.lua',
-  _DESCRIPTION = 'A collision detection library for Lua',
+  _VERSION     = 'bump-3dpd v0.0.0',
+  _URL         = 'https://github.com/oniietzschan/bump-3dpd.lua',
+  _DESCRIPTION = 'A 3D collision detection library for Lua.',
   _LICENSE     = [[
     MIT LICENSE
 
@@ -175,7 +175,7 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
   local dz = goalZ - z1
   local x,y,z,w,h,d = cube_getDiff(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
 
-  local overlaps, ti, nx, ny
+  local overlaps, ti, nx, ny, nz
 
   if cube_containsPoint(x,y,z,w,h,d, 0,0,0) then -- item was intersecting other
     local px, py, pz = cube_getNearestCorner(x,y,z,w,h,d, 0,0,0)
@@ -391,7 +391,7 @@ local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
 
   local tch, move = col.touch, col.move
   local tx, ty, tz = tch.x, tch.y, tch.z
-  local bx, by, bz = tx, ty, bz
+  local bx, by, bz = tx, ty, tz
 
   if move.x ~= 0 or move.y ~= 0 or move.z ~= 0 then
     local bnx = goalX - tx

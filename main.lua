@@ -88,7 +88,7 @@ function love.load()
     local h = math.random(10, 100)
     local d = verticalMagnitude
 
-    local items = world:queryCube(x, y, z, w, h, d, filter)
+    local items = world:queryCube(x, y, z, w, h, d)
     if #items == 0 then
       addBlock(x, y, z, w, h, d)
     end
@@ -163,7 +163,7 @@ end
 local function drawPlayerShadow()
   local color = player.color
   love.graphics.setColor(color.r * 0.15, color.g * 0.15, color.b * 0.15)
-  local x,y,z,w,h,d = world:getCube(player)
+  local x,y,_,w,h,_ = world:getCube(player)
   love.graphics.rectangle("fill", x, y, w, h)
 end
 
@@ -207,7 +207,7 @@ local function drawItemDebug(item)
     return
   end
 
-  local x,y,z,w,h,d = world:getCube(item)
+  local x,y,z,_,h,_ = world:getCube(item)
 
   love.graphics.setColor(255, 255, 255)
   love.graphics.print(y .. ' + ' .. h .. ' = ' .. item.sort , x, y + z)
@@ -265,8 +265,7 @@ local function drawDebug()
 end
 
 local function drawConsole()
-  local str = table.concat(consoleBuffer, "\n")
-  for i=1,consoleBufferSize do
+  for i = 1, consoleBufferSize do
     love.graphics.setColor(255,255,255, i*255/consoleBufferSize)
     love.graphics.printf(consoleBuffer[i], 10, 580-(consoleBufferSize - i)*12, 790, "left")
   end

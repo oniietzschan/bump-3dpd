@@ -11,24 +11,21 @@ env:
 before_install:
   - pip install hererocks
   - hererocks lua_install -r^ --$LUA
-  - export PATH=$PATH:$PWD/lua_install/bin # Add directory with all installed binaries to PATH
+  - export PATH=$PATH:$PWD/lua_install/bin
 
 install:
   - luarocks install luacheck
   - luarocks install busted
   - luarocks install luacov
-  - luarocks install luacov-coveralls
 
 script:
-  - luacheck --no-unused-args --std max+busted *.lua spec
+  - luacheck --no-unused-args --no-max-line-length --std max+busted bump-3dpd.lua spec
+  - luacheck --no-unused-args --no-max-line-length --std max+love   main.lua
   - busted --verbose --coverage
 
 after_success:
-  - luacov-coveralls --exclude $TRAVIS_BUILD_DIR/lua_install
-
-branches:
-  except:
-    - gh-pages
+  - luacov
+  - bash <(curl -s https://codecov.io/bash)
 
 notifications:
   email:
