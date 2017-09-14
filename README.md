@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/oniietzschan/bump-3dpd.svg?branch=master)](https://travis-ci.org/oniietzschan/bump-3dpd)
 [![Coverage Status](https://codecov.io/gh/oniietzschan/bump-3dpd/branch/master/graph/badge.svg)](https://codecov.io/gh/oniietzschan/bump-3dpd)
 
-bump-3dpd is a Lua collision-detection library for axis-aligned cubes. It is based off of [kikito's bump.lua library](https://github.com/kikito/bump.lua). Its main features are:
+bump-3dpd is a Lua three-dimensional collision-detection library for axis-aligned cubes. It is based off of [kikito's bump.lua library](https://github.com/kikito/bump.lua). Its main features are:
 
 * bump-3dpd only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (spheres, meshes, etc.) then you're out of luck, pal.
 * Handles tunnelling - all items are treated as "bullets". The fact that we only use AABBs allows doing this fast.
