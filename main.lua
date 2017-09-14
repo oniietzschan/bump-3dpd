@@ -1,29 +1,20 @@
-local bump = require 'bump'
+local bump3dpd = require 'bump-3dpd'
 
-local seed = 1504899684 -- os.time()
+local seed = os.time()
 print('Seeding RNG with: ' .. seed)
 math.randomseed(seed)
 
--- Enable console output.
-io.stdout:setvbuf("no")
+io.stdout:setvbuf("no") -- Enable console output.
 
-local shouldDrawConsole = false
-
-local instructions = [[
-  bump.lua simple demo
-
-    arrows: move
-    space: jump
-    tab: toggle console info
-    delete: run garbage collector
-]]
+local isDrawConsole = false
 
 local collisionsThisTick = 0
 
-local world = bump.newWorld()
+local world = bump3dpd.newWorld()
 
 local ph = 25
 local player = {
+  name = 'player',
   x = 50,
   y = 50,
   z = -ph,
@@ -43,16 +34,13 @@ local player = {
 
 local consoleBuffer = {}
 local consoleBufferSize = 15
-for i=1,consoleBufferSize do consoleBuffer[i] = "" end
+for i = 1, consoleBufferSize do
+  consoleBuffer[i] = ''
+end
 
 local function addBlock(x,y,z,w,h,d)
   local block = {
-    x = x,
-    y = y,
-    z = z,
-    w = w,
-    h = h,
-    d = d,
+    name = 'block',
     color = {
       r = 255,
       g = 0,
@@ -167,6 +155,73 @@ local function drawPlayerShadow()
   love.graphics.rectangle("fill", x, y, w, h)
 end
 
+-- Z-Sorting algorithm implementation was largely informed by this excellent blog post:
+-- http://andrewrussell.net/2016/06/how-2-5d-sorting-works-in-river-city-ransom-underground/
+local getZSortedItems = nil
+do
+  -- We use the original, 2d version of bump.lua in order to detect which items
+  -- overlap when painting the world.
+  -- https://github.com/kikito/bump.lua
+  local bump2d   = require 'demolibs.bump'
+
+  -- Topological sorting library.
+  -- https://github.com/bungle/lua-resty-tsort
+  local tsort    = require 'demolibs.tsort'
+
+  local world2d = bump2d.newWorld()
+
+  getZSortedItems = function()
+    for _, item in ipairs(world:getItems()) do
+      if item.invisible ~= true then
+        x,y,z,w,h,d = world:getCube(item)
+        if world2d:hasItem(item) then
+          world2d:update(item, x, y + z)
+        else
+          world2d:add(item, x, y + z, w, h + d)
+        end
+      end
+    end
+
+    -- Sort items
+    local graph = tsort.new()
+    local noOverlap = {}
+
+    for _, itemA in ipairs(world2d:getItems()) do
+      local x, y, w, h = world2d:getRect(itemA)
+      local otherItemsFilter = function(other) return other ~= itemA end
+      local overlapping, len = world2d:queryRect(x, y, w, h, otherItemsFilter)
+      if len >= 1 then
+        for _, itemB in ipairs(overlapping) do
+          local _, aY, aZ, _, aH, aD = world:getCube(itemA)
+          local _, bY, bZ, _, bH, bD = world:getCube(itemB)
+          if aZ + aD <= bZ then
+            -- item A is fully above item B
+            graph:add(itemB, itemA)
+          elseif bZ + bD <= aZ then
+            -- item B is fully above item A
+            graph:add(itemA, itemB)
+          elseif aY + aZ + aY + aD >= bY + bZ + bY + bD then
+            -- item A is in front of item B
+            graph:add(itemB, itemA)
+          else
+            -- item B is in front of item A
+            graph:add(itemA, itemB)
+          end
+        end
+      else
+        table.insert(noOverlap, itemA)
+      end
+    end
+
+    local sorted = graph:sort()
+    for _, item in ipairs(noOverlap) do
+      table.insert(sorted, item)
+    end
+
+    return sorted
+  end
+end
+
 local function drawItem(item)
   if item.invisible == true then
     return
@@ -179,12 +234,6 @@ local function drawItem(item)
 
   local x,y,z,w,h,d = world:getCube(item)
 
-  -- -- Back Side
-  -- setAlpha(0.15)
-  -- love.graphics.rectangle("fill", x, y + z, w, d)
-  -- setAlpha(1)
-  -- love.graphics.rectangle("line", x, y + z, w, d)
-
   -- Front Side
   setAlpha(0.3)
   love.graphics.rectangle("fill", x, y + z + h, w, d)
@@ -196,58 +245,30 @@ local function drawItem(item)
   love.graphics.rectangle("fill", x, y + z, w, h)
   setAlpha(1)
   love.graphics.rectangle("line", x, y + z, w, h)
-
-  -- -- Bottom
-  -- setAlpha(1)
-  -- love.graphics.rectangle("line", x, y + z + d, w, h)
-end
-
-local function drawItemDebug(item)
-  if item.sort == nil then
-    return
-  end
-
-  local x,y,z,_,h,_ = world:getCube(item)
-
-  love.graphics.setColor(255, 255, 255)
-  love.graphics.print(y .. ' + ' .. h .. ' = ' .. item.sort , x, y + z)
-end
-
-local function drawSort(a, b)
-  a.sort = a.z
-  b.sort = b.z
-
-  if a.z + a.d == b.z + b.d then
-    if a.y == b.y then
-      return false
-    else
-      return a.y < b.y
-    end
-  else
-    return a.z + a.d > b.z + b.d
-  end
 end
 
 local drawWorld = function()
   drawPlayerShadow()
 
-  local items = world:getItems()
-  table.sort(items, drawSort)
+  local items = getZSortedItems()
+
   for _, item in ipairs(items) do
     drawItem(item)
   end
-  for _, item in ipairs(items) do
-    drawItemDebug(item)
-  end
-
-  --testing only
-  drawPlayerShadow()
 end
 
-local function drawMessage()
-  local msg = instructions:format(tostring(shouldDrawConsole))
+local instructions = [[
+  bump-3dpd simple demo
+
+    arrows: move
+    space: jump
+    tab: toggle console info
+    delete: run garbage collector
+]]
+
+local function drawInstructions()
   love.graphics.setColor(255, 255, 255)
-  love.graphics.print(msg, 550, 10)
+  love.graphics.print(instructions, 550, 10)
 end
 
 local function drawDebug()
@@ -274,13 +295,11 @@ end
 function love.draw()
   drawWorld()
 
+  drawInstructions()
   drawDebug()
-
-  if shouldDrawConsole then
+  if isDrawConsole then
     drawConsole()
   end
-
-  drawMessage()
 end
 
 function love.keypressed(k)
@@ -289,7 +308,7 @@ function love.keypressed(k)
   end
 
   if k == "tab" then
-    shouldDrawConsole = not shouldDrawConsole
+    isDrawConsole = not isDrawConsole
   end
 
   if k == "delete" then

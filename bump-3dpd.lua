@@ -1,6 +1,6 @@
 local bump = {
   _VERSION     = 'bump-3dpd v0.0.0',
-  _URL         = 'https://github.com/oniietzschan/bump-3dpd.lua',
+  _URL         = 'https://github.com/oniietzschan/bump-3dpd',
   _DESCRIPTION = 'A 3D collision detection library for Lua.',
   _LICENSE     = [[
     MIT LICENSE
