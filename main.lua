@@ -12,15 +12,15 @@ local collisionsThisTick = 0
 
 local world = bump3dpd.newWorld()
 
-local ph = 25
+local playerHeight = 25
 local player = {
   name = 'player',
   x = 50,
   y = 50,
-  z = -ph,
+  z = -playerHeight,
   w = 20,
   h = 20,
-  d = ph,
+  d = playerHeight,
   zVelocity = 0,
   speed = 140,
   jump = 375,
@@ -56,14 +56,14 @@ function love.load()
   world:add(player, player.x, player.y, player.z, player.w, player.h, player.d)
 
   -- Add floor.
-  local floor = addBlock(0, 0, 0, 800, 800, 5)
+  local floor = addBlock(0, 0, 0, 800, 600, 5)
   floor.invisible = true
 
   -- Add walls around the edge.
-  addBlock(     0,      0, -32, 800,       32, 32)
-  addBlock(     0,     32, -32,  32, 600-32*2, 32)
-  addBlock(800-32,     32, -32,  32, 600-32*2, 32)
-  addBlock(     0, 600-32, -32, 800,       32, 32)
+  addBlock(     0,      0, -20, 800-32,     32, 20)
+  addBlock(800-32,      0, -20,     32, 600-32, 20)
+  addBlock(    32, 600-32, -20, 800-32,     32, 20)
+  addBlock(     0,     32, -20,     32, 600-32, 20)
 
   -- Add 30 random blocks. No intersection.
   for i=1,30 do
@@ -138,6 +138,15 @@ local function updatePlayer(dt)
   end
 end
 
+local memoryTotalLastFrame = 0
+local memoryChangeThisFrame = 0
+
+local function calculateMemoryChangeThisFrame()
+  local memoryTotalThisFrame = collectgarbage("count")
+  memoryChangeThisFrame = memoryTotalThisFrame - memoryTotalLastFrame
+  memoryTotalLastFrame = memoryTotalThisFrame
+end
+
 function love.update(dt)
   collisionsThisTick = 0
 
@@ -146,6 +155,7 @@ function love.update(dt)
   end
 
   updatePlayer(dt)
+  calculateMemoryChangeThisFrame()
 end
 
 local function drawPlayerShadow()
@@ -157,7 +167,7 @@ end
 
 -- Z-Sorting algorithm implementation was largely informed by this excellent blog post:
 -- http://andrewrussell.net/2016/06/how-2-5d-sorting-works-in-river-city-ransom-underground/
-local getZSortedItems = nil
+local getZSortedItems
 do
   -- We use the original, 2d version of bump.lua in order to detect which items
   -- overlap when painting the world.
@@ -171,9 +181,10 @@ do
   local world2d = bump2d.newWorld()
 
   getZSortedItems = function()
+    -- Add or update draw positions of all visible items.
     for _, item in ipairs(world:getItems()) do
       if item.invisible ~= true then
-        x,y,z,w,h,d = world:getCube(item)
+        local x,y,z,w,h,d = world:getCube(item)
         if world2d:hasItem(item) then
           world2d:update(item, x, y + z)
         else
@@ -182,38 +193,52 @@ do
       end
     end
 
-    -- Sort items
     local graph = tsort.new()
     local noOverlap = {}
 
-    for _, itemA in ipairs(world2d:getItems()) do
+    -- Iterate through all visible items, and calculate ordering of all pairs
+    -- of overlapping items.
+    -- TODO: Each pair is calculated twice currently. Maybe this is slow?
+    for _, itemA in ipairs(world2d:getItems()) do repeat
       local x, y, w, h = world2d:getRect(itemA)
       local otherItemsFilter = function(other) return other ~= itemA end
       local overlapping, len = world2d:queryRect(x, y, w, h, otherItemsFilter)
-      if len >= 1 then
-        for _, itemB in ipairs(overlapping) do
-          local _, aY, aZ, _, aH, aD = world:getCube(itemA)
-          local _, bY, bZ, _, bH, bD = world:getCube(itemB)
-          if aZ + aD <= bZ then
-            -- item A is fully above item B
-            graph:add(itemB, itemA)
-          elseif bZ + bD <= aZ then
-            -- item B is fully above item A
-            graph:add(itemA, itemB)
-          elseif aY + aZ + aY + aD >= bY + bZ + bY + bD then
-            -- item A is in front of item B
-            graph:add(itemB, itemA)
-          else
-            -- item B is in front of item A
-            graph:add(itemA, itemB)
-          end
-        end
-      else
-        table.insert(noOverlap, itemA)
-      end
-    end
 
-    local sorted = graph:sort()
+      if len == 0 then
+        table.insert(noOverlap, itemA)
+
+        break
+      end
+
+      for _, itemB in ipairs(overlapping) do
+        local _, aY, aZ, _, aH, aD = world:getCube(itemA)
+        local _, bY, bZ, _, bH, bD = world:getCube(itemB)
+        if aZ + aD <= bZ then
+          -- item A is completely above item B
+          graph:add(itemB, itemA)
+        elseif bZ + bD <= aZ then
+          -- item B is completely above item A
+          graph:add(itemA, itemB)
+        elseif aY + aH <= bY then
+          -- item A is completely behind item B
+          graph:add(itemA, itemB)
+        elseif bY + bH <= aY then
+          -- item B is completely behind item A
+          graph:add(itemB, itemA)
+        elseif aY + aZ + aH + aD >= bY + bZ + bH + bD then
+          -- item A's forward-most point is in front of item B's forward-most point
+          graph:add(itemB, itemA)
+        else
+          -- item B's forward-most point is in front of item A's forward-most point
+          graph:add(itemA, itemB)
+        end
+      end
+    until true end
+
+    local sorted, err = graph:sort()
+    if err then
+      error(err)
+    end
     for _, item in ipairs(noOverlap) do
       table.insert(sorted, item)
     end
@@ -228,8 +253,11 @@ local function drawItem(item)
   end
 
   local setAlpha = function(alpha)
-    local color = item.color
-    love.graphics.setColor(color.r * alpha, color.g * alpha, color.b * alpha)
+    love.graphics.setColor(
+      item.color.r * alpha,
+      item.color.g * alpha,
+      item.color.b * alpha
+    )
   end
 
   local x,y,z,w,h,d = world:getCube(item)
@@ -250,14 +278,12 @@ end
 local drawWorld = function()
   drawPlayerShadow()
 
-  local items = getZSortedItems()
-
-  for _, item in ipairs(items) do
+  for _, item in ipairs(getZSortedItems()) do
     drawItem(item)
   end
 end
 
-local instructions = [[
+local INSTRUCTIONS = [[
   bump-3dpd simple demo
 
     arrows: move
@@ -268,13 +294,14 @@ local instructions = [[
 
 local function drawInstructions()
   love.graphics.setColor(255, 255, 255)
-  love.graphics.print(instructions, 550, 10)
+  love.graphics.print(INSTRUCTIONS, 550, 10)
 end
 
 local function drawDebug()
-  local statistics = ("fps: %d, mem: %dKB, collisions: %d, items: %d, player: (%d, %d, %d)"):format(
+  local statistics = ("fps: %d, mem: %dKB, mem/frame: %.3fKB, collisions: %d, items: %d"):format(
     love.timer.getFPS(),
     collectgarbage("count"),
+    memoryChangeThisFrame,
     collisionsThisTick,
     world:countItems(),
     player.x,

@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/oniietzschan/bump-3dpd.svg?branch=master)](https://travis-ci.org/oniietzschan/bump-3dpd)
 [![Coverage Status](https://codecov.io/gh/oniietzschan/bump-3dpd/branch/master/graph/badge.svg)](https://codecov.io/gh/oniietzschan/bump-3dpd)
 
-Lua collision-detection library for axis-aligned cubes. Its main features are:
+bump-3dpd is a Lua collision-detection library for axis-aligned cubes. It is based off of [kikito's bump.lua library](https://github.com/kikito/bump.lua). Its main features are:
 
 * bump-3dpd only does axis-aligned bounding-box (AABB) collisions. If you need anything more complicated than that (spheres, meshes, etc.) then you're out of luck, pal.
 * Handles tunnelling - all items are treated as "bullets". The fact that we only use AABBs allows doing this fast.
@@ -16,9 +16,9 @@ The demos are LÖVE based, but this library can be used in any Lua-compatible en
 
 `bump-3dpd` is ideal for:
 
-* Tile-based games, and games where most entities can be represented as axis-aligned cubes.
+* 2.5D tile-based games, and games where most entities can be represented as axis-aligned cubes.
 * Games which require some physics, but not a full realistic simulation - like a platformer.
-* Examples of genres: top-down games (Zelder), Shoot-those-ups, fighting games (Arcana Heart), platformers (Jumpman).
+* Examples of genres: beat 'em up (Battle Circuit), action-adventure (Zelder), 3D platformer (Knack).
 
 `bump-3dpd` is not a good match for:
 
@@ -543,4 +543,6 @@ Specs for this project can be run using [busted](http://olivinelabs.com/busted).
 
 See CHANGELOG.md for details
 
+## Todo
 
+* Empty planes and rows should be removed from world.cells as part of garbage collection.

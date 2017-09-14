@@ -19,8 +19,9 @@ install:
   - luarocks install luacov
 
 script:
-  - luacheck --no-unused-args --no-max-line-length --std max+busted bump-3dpd.lua spec
+  - luacheck --no-unused-args --no-max-line-length --std max        bump-3dpd.lua
   - luacheck --no-unused-args --no-max-line-length --std max+love   main.lua
+  - luacheck --no-unused-args --no-max-line-length --std max+busted spec
   - busted --verbose --coverage
 
 after_success:

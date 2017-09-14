@@ -163,13 +163,27 @@ describe('World', function()
     end)
 
     it('marks empty cells & rows for deallocation', function()
-      world:add({'a'}, 0,0,0, 10,10,10)
+      local _ = world:add({'a'}, 0,0,0, 10,10,10)
       local b = world:add({'b'}, 200,200,200, 10,10,10)
+
       assert.same(2, world:countCells())
+      assert.same('table', type(world.cells[4]))
+      assert.same('table', type(world.cells[4][4]))
+      assert.same('table', type(world.cells[4][4][4]))
+
       world:remove(b)
+
       assert.same(2, world:countCells())
+      assert.same('table', type(world.cells[4]))
+      assert.same('table', type(world.cells[4][4]))
+      assert.same('table', type(world.cells[4][4][4]))
+
       collectgarbage('collect')
+
       assert.same(1, world:countCells())
+      assert.same('table', type(world.cells[4])) --    TODO: Cell planes should be garbage collected.
+      assert.same('table', type(world.cells[4][4])) -- TODO: Cell rows should be garbage collected.
+      assert.same(nil, world.cells[4][4][4])
     end)
   end)
 

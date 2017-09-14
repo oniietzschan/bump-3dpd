@@ -446,7 +446,7 @@ local function sortByTiAndDistance(a,b)
 end
 
 local function addItemToCell(self, item, cx, cy, cz)
-  self.cells[cz] = self.cells[cz] or setmetatable({}, {__mode = 'v'})
+  self.cells[cz] = self.cells[cz] or {}
   self.cells[cz][cy] = self.cells[cz][cy] or setmetatable({}, {__mode = 'v'})
   if self.cells[cz][cy][cx] == nil then
     self.cells[cz][cy][cx] = {
@@ -457,6 +457,7 @@ local function addItemToCell(self, item, cx, cy, cz)
       items = setmetatable({}, {__mode = 'k'})
     }
   end
+
   local cell = self.cells[cz][cy][cx]
   self.nonEmptyCells[cell] = true
   if not cell.items[item] then
