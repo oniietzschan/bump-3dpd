@@ -210,8 +210,8 @@ do
         break
       end
 
+      local _, aY, aZ, _, aH, aD = world:getCube(itemA)
       for _, itemB in ipairs(overlapping) do
-        local _, aY, aZ, _, aH, aD = world:getCube(itemA)
         local _, bY, bZ, _, bH, bD = world:getCube(itemB)
         if aZ + aD <= bZ then
           -- item A is completely above item B

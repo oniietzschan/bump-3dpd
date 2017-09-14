@@ -42,7 +42,7 @@ local A = {name="A"}
 local B = {name="B"}
 
 -- insert both cubes into bump
-world:add(A, 0,    0, 0, 64, 256, 64) -- x,y,z, width, height, depth
+world:add(A, 0,    0, 0, 64, 256, 64) -- x, y, z, width, height, depth
 world:add(B, 0, -100, 0, 32,  32, 32)
 
 -- Try to move B to 0,64,0. If it collides with A, "slide over it"
@@ -84,7 +84,7 @@ local bump = require 'bump-3dpd'
 ```
 
 The following methods (`bump.newWorld`, `world:add`, `world:remove`, `world:update`, `world:move` & `world:check`) are *basic* for
-working with bump, as well as the 4 collision responses. If you want to use bump-3dpd effectively, you will need to understand at least
+working with bump-3dpd, as well as the 4 collision responses. If you want to use bump-3dpd effectively, you will need to understand at least
 these.
 
 ### Creating a world
@@ -93,11 +93,11 @@ these.
 local world = bump.newWorld(cellSize)
 ```
 
-The first thing to do with bump is creating a world. That is done with `bump.newWorld`.
+The first thing to do with bump-3dpd is creating a world. That is done with `bump.newWorld`.
 
 * `cellSize`. Is an optional number. It defaults to 64. It represents the size of the sides
-  of the (squared) cells that will be used internally to provide the data. In tile based games, it's usually a multiple of
-  the tile side size. So in a game where tiles are 32x32, `cellSize` will be 32, 64 or 128. In more sparse games, it can be
+  of the (equilateral) cells that will be used internally to provide the data. In tile based games, it's usually a multiple of
+  the tile side size. So in a game where tiles are 32x32x32, `cellSize` will be 32, 64 or 128. In more sparse games, it can be
   higher.
 
 Don't worry too much about `cellSize` at the beginning, you can tweak it later on to see if bigger/smaller numbers
@@ -109,25 +109,21 @@ The rest of the methods we have are for the worlds that we create.
 ### Adding items to the world
 
 ``` lua
-world:add(item, x,y,w,h)
+world:add(item, x, y, z, w, h, d)
 ```
 
 `world:add` is what you need to insert a new item in a world. "Items" are "anything that matters to your collision". It can be the player character,
 a tile, a missile etc. In fact, you can insert items that don't participate in the collision at all - like puffs of smoke or background tiles. This
-can be handy if you want to use the bump world as a spatial database in addition to a collision detector (see the "queries section" below for mode details).
+can be handy if you want to use the bump-3dpd world as a spatial database in addition to a collision detector (see the "queries section" below for mode details).
 
 Each `item` will have an associated "cube" in the `world`.
 
 * `item` is the new item being inserted (usually a table representing a game object, like `player` or `ground_tile`).
-* `x,y,w,h`: the cube associated to `item` in the world. They are all mandatory. `w` & `h` are the "width" and "height"
-  of the box. `x` and `y` depend on the host system's coordinate system. For example, in [LÖVE](http://love2d.org) &
-  [Corona SDK](http://coronalabs.com/products/corona-sdk/) they represent "left" & "top", while in [Cocos2d-x](http://cocos2d-x.org/wiki/Lua)
-  they represent "left" & "bottom".
+* `x, y, z, w, h, d`: the bounding-cube associated with `item` in the world. They are all mandatory. `x`, `y`, and `z` are the coordinates of the cube's position in space. `w`, `h`, `d` are the "width", and "height", and "depth" of the cube.
 
 `world:add` returns no values. It generates no collisions - you can call `world:check(item)` if you want to get the collisions it creates right after it's added.
 
 If you try to add an item to a world that already contains it, you will get an error.
-
 
 ### Removing items from the world
 
@@ -139,7 +135,7 @@ bump-3dpd stores *hard references* to any items that you add (with `world:add`).
 from your "entity list", you must also remove it from the world using `world:remove`. Otherwise it will still be there, and other objects might still collide
 with it.
 
-* `item` must be something previously inserted in the world with `world:add(item, l,t,w,h)`. If this is not the case, `world:remove` will raise an error.
+* `item` must be something previously inserted in the world with `world:add`. If this is not the case, `world:remove` will raise an error.
 
 Once removed from the world, the item will stop existing in that world. It won't trigger any collisions with other objects any more. Attempting to move it
 with `world:move` or checking collisions with `world:check` will raise an error.
@@ -151,14 +147,13 @@ This method returns nothing.
 ### Changing the position and dimensions of items in the world
 
 ``` lua
-world:update(item, x,y,<w>,<h>)
+world:update(item, x, y, z, <w>, <h>, <d>)
 ```
 
-Even if your "player" has attributes like `player.x` and `player.y`, changing those will not automatically change them inside `world`. `update` is one of
-the ways to do so: it changes the cube representing `item` inside `world`.
+Even if your "player" has attributes like `player.x`, `player.y`, and `player.z`, changing those will not automatically change them inside `world`. `update` is one of the ways to do so: it changes the cube representing `item` inside `world`.
 
-* `item` must be something previously inserted in the world with `world:add(item, l,t,w,h)`. Otherwise, `world:update` will raise an error.
-* `x,y,w,h` the new dimensions of `item`. `x` and `y` are mandatory. `w` and `h` will default to the values the world already had for `item`.
+* `item` must be something previously inserted in the world with `world:add`. Otherwise, `world:update` will raise an error.
+* `x, y, z, w, h, d` the new dimensions of `item`. `x`, `y`, and `z` are mandatory. `w`, `h`, and `d` will default to the values the world already had for `item`.
 
 This method always changes the cube associated to `item`, ignoring all collisions (use `world:move` for that). It returns nothing.
 
@@ -169,13 +164,13 @@ In order to do that, you have `world:move`.
 ### Moving an item in the world, with collision resolution
 
 ``` lua
-local actualX, actualY, cols, len = world:move(item, goalX, goalY, <filter>)
+local actualX, actualY, actualZ, cols, len = world:move(item, goalX, goalY, goalZ, <filter>)
 ```
 
 This is probably the most useful method of bump-3dpd. It moves the item inside the world towards a desired position, but taking collisions into account.
 
-* `item` must be something previously inserted in the world with `world:add(item, l,t,w,h)`. Otherwise, `world:move` will raise an error.
-* `goalX, goalY` are the *desired* `x` and `y` coordinates. The item will end up in those coordinates if it doesn't collide with anything.
+* `item` must be something previously inserted in the world with `world:add`. Otherwise, `world:move` will raise an error.
+* `goalX, goalY, goalZ` are the *desired* `x`, `y`, and `z` coordinates. The item will end up in those coordinates if it doesn't collide with anything.
   If, however, it collides with 1 or more other items, it can end up in a different set of coordinates.
 * `filter` is an optional function. If provided, it must have this signature: `local type = filter(item, other)`. By default, `filter` always returns `"slide"`.
   * `item` is the item being moved (the same one passed to `world:move` on the first param)
@@ -185,22 +180,23 @@ This is probably the most useful method of bump-3dpd. It moves the item inside t
     * If `type` is `"touch"`, `"cross"`, `"slide"` or `"bounce"`, `item` will respond to the collisions in different ways (explained below)
     * Any other value (unless handled in an advanced way) will provoke an error
 
-* `actualX, actualY` are the coordinates where the object ended up after colliding with other objects in the world while trying to get to
-  `goalX, goalY`. They can be equal to `goalX, goalY` if, for example, no collisions happened.
+* `actualX, actualY, actualZ` are the coordinates where the object ended up after colliding with other objects in the world while trying to get to `goalX, goalY, goalZ`. They can be equal to `goalX, goalY, goalZ` if, for example, no collisions happened.
 * `len` is the amount of collisions produced. It is equivalent to `#cols`
 * `cols` is an array of all the collisions that were detected. Each collision is a table. The most important item in that table is `cols[i].other`, which
   points to the item that collided with `item`. A full description of what's inside of each collision can be found on the "Advanced API" section.
 
-The usual way you would use move is: calculate a "desirable" `goalX, goalY` point for an item (maybe using its velocity), pass it to move, and then use `actualX, actualY`
+The usual way you would use move is: calculate a "desirable" `goalX, goalY, goalZ` point for an item (maybe using its velocity), pass it to move, and then use `actualX, actualY, actualZ`
 as the real "updates" - . For example, here's how a player would move:
 
 ``` lua
-function movePlayer(player, dt)
-  local goalX, goalY = player.x + player.vx * dt, player.y + player.vy * dt
-  local actualX, actualY, cols, len = world:move(player, goalX, goalY)
-  player.x, player.y = actualX, actualY
+function player:move(dt)
+  local goalX = self.x + self.xVelocity * dt
+  local goalY = self.y + self.yVelocity * dt
+  local goalZ = self.z + self.zVelocity * dt
+  local actualX, actualY, actualZ, cols, len = world:move(self, goalX, goalY, goalZ)
+  self.x, self.y, self.z = actualX, actualY, actualZ
   -- deal with the collisions
-  for i=1,len do
+  for i = 1, len do
     print('collided with ' .. tostring(cols[i].other))
   end
 end
@@ -246,15 +242,13 @@ Collisions of this type have their `type` attribute set to `"cross"` and don't h
 
 This is the default collision type used in bump-3dpd. It's what you want to use for solid objects which "slide over other objects", like Super Mario does over a platform or the ground.
 
-Collisions of this type have their `type` attribute set to `"slide"`. They also have a special attribute called `col.slide`, which is a 2d vector with two components: `col.slide.x` &
-`col.slide.y`. It represents the x and y coordinates to which the `item` "attempted to slide to". They are different from `actualX` & `actualY` since other collisions later on can
-modify them.
+Collisions of this type have their `type` attribute set to `"slide"`. They also have a special attribute called `col.slide`, which is a 3d vector with three components: `col.slide.x`, `col.slide.y`, & `col.slide.z`. It represents the x, y, and z coordinates to which the `item` "attempted to slide to". They are different from `actualX`, `actualY`, & `actualZ` since other collisions later on can modify them.
 
 ![bounce](img/bounce.png)
 
 A good example of this behavior is Arkanoid's ball; you can use this type of collision for things that "move away" after touching others.
 
-Collisions of this type have their `type` attribute set to `"bounce"`. They also have a special attributes called `col.bounce`. It is a 2d vector which represents the x and y
+Collisions of this type have their `type` attribute set to `"bounce"`. They also have a special attributes called `col.bounce`. It is a 3d vector which represents the x, y, and z
 coordinates to which the `item` "attempted to bounce".
 
 Here's an example of a filter displaying all these behaviors:
@@ -276,18 +270,20 @@ not collide with like clouds in the background.
 You could then use the collisions returned like so:
 
 ``` lua
-function movePlayer(player, dt)
-  local goalX, goalY = player.vx * dt, player.vy * dt
-  local actualX, actualY, cols, len = world:move(player, goalX, goalY, playerFilter)
-  player.x, player.y = actualX, actualY
-  for i=1,len do
+function player:move(dt)
+  local goalX = self.x + self.xVelocity * dt
+  local goalY = self.y + self.yVelocity * dt
+  local goalZ = self.z + self.zVelocity * dt
+  local actualX, actualY, actualZ, cols, len = world:move(self, goalX, goalY, goalZ, playerFilter)
+  self.x, self.y, self.z = actualX, actualY, actualZ
+  for i = 1, len do
     local other = cols[i].other
     if other.isCoin then
       takeCoin(other)
     elseif other.isExit then
       changeLevel()
     elseif other.isSpring then
-      highJump()
+      self:highJump()
     end
   end
 end
@@ -296,10 +292,10 @@ end
 ### Checking for collisions without moving
 
 ``` lua
-local actualX, actualY, cols, len = world:check(item, goalX, goalY, <filter>)
+local actualX, actualY, actualZ, cols, len = world:check(item, goalX, goalY, goalZ, <filter>)
 ```
 
-It returns the position where `item` would end up, and the collisions it would encounter, should it attempt to move to `goalX, goalY` with the specified `filter`.
+It returns the position where `item` would end up, and the collisions it would encounter, should it attempt to move to `goalX, goalY, goalZ` with the specified `filter`.
 
 Notice that `check` has the same parameters and return values as `move`. The difference is that the former does not update the position of `item` in the world - you
 would have to call `world:update` in order to do that. In fact, `world:move` is implemented by calling `world:check` first, and then `world:update` immediately after.
@@ -307,12 +303,14 @@ would have to call `world:update` in order to do that. In fact, `world:move` is 
 The equivalent code to the previous example using `check` would be:
 
 ``` lua
-function movePlayer(player, dt)
-  local goalX, goalY = player.vx * dt, player.vy * dt
-  local actualX, actualY, cols, len = world:check(player, goalX, goalY)
-  world:update(player, actualX, actualY) -- update the player's cube in the world
-  player.x, player.y = actualX, actualY
-  ... <deal with the collisions as before>
+function player:move(dt)
+  local goalX = self.x + self.xVelocity * dt
+  local goalY = self.y + self.yVelocity * dt
+  local goalZ = self.z + self.zVelocity * dt
+  local actualX, actualY, actualZ, cols, len = world:check(self, goalX, goalY, goalZ, playerFilter)
+  world:update(self, actualX, actualY, actualZ) -- update the player's cube in the world
+  self.x, self.y, self.z = actualX, actualY, actualZ
+  -- ... <deal with the collisions as before>
 end
 ```
 
@@ -330,12 +328,14 @@ cols[i] = {
   type  = the result of `filter(other)`. It's usually "touch", "cross", "slide" or "bounce"
   overlaps  = boolean. True if item "was overlapping" other when the collision started.
               False if it didn't but "tunneled" through other
-  ti        = Number between 0 and 1. How far along the movement to the goal did the collision occur>
-  move      = Vector({x=number,y=number}). The difference between the original coordinates and the actual ones.
-  normal    = Vector({x=number,y=number}). The collision normal; usually -1,0 or 1 in `x` and `y`
-  touch     = Vector({x=number,y=number}). The coordinates where item started touching other
-  itemCube  = The cube item occupied when the touch happened({x = N, y = N, w = N, h = N})
-  otherCube = The cube other occupied when the touch happened({x = N, y = N, w = N, h = N})
+  ti        = Number between 0 and 1. How far along the movement to the goal did the collision occur
+  move      = Vector({x=number,y=number,z=number}). The difference between the original
+              coordinates and the actual ones.
+  normal    = Vector({x=number,y=number,z=number}). The collision normal; usually -1, 0, or 1
+              in x, y, and z.
+  touch     = Vector({x=number,y=number,z=number}). The coordinates where item started touching other
+  itemCube  = The cube item occupied when the touch happened({x=N, y=N, z=N, w=N, h=N, d=N})
+  otherCube = The cube other occupied when the touch happened({x=N, y=N, z=N, w=N, h=N, d=N})
 }
 ```
 
@@ -363,15 +363,14 @@ you do the collisions).
 ### Querying with a point
 
 ``` lua
-local items, len = world:queryPoint(x,y, filter)
+local items, len = world:queryPoint(x, y, z, filter)
 ```
 Returns the items that touch a given point.
 
 It is useful for things like clicking with the mouse and getting the items affected.
 
-* `x,y` are the coordinates of the point that is being checked
-* `items` is the list items from the ones inserted on the world (like `player`) that contain the point `x,y`.
-  If no items touch the point, then `items` will be an empty table. If not empty, then the order of these items is random.
+* `x, y, z` are the coordinates of the point that is being checked
+* `items` is the list items from the ones inserted on the world (like `player`) that contain the point `x, y, z`. If no items touch the point, then `items` will be an empty table. If not empty, then the order of these items is random.
 * `filter` is an optional function. It takes one parameter (an item). `queryPoint` will not return the items that return
   `false` or `nil` on `filter(item)`. By default, all items touched by the point are returned.
 * `len` is the length of the items list. It is equivalent to `#items`, but it's slightly faster to use `len` instead.
@@ -379,39 +378,35 @@ It is useful for things like clicking with the mouse and getting the items affec
 ### Querying with a cube
 
 ``` lua
-local items, len = world:queryCube(l,t,w,h, filter)
+local items, len = world:queryCube(x, y, z, w, h, d, filter)
 ```
 Returns the items that touch a given cube.
 
 Useful for things like selecting what to display on the screen, as mentioned above, or selecting a group of units with the mouse in a strategy game.
 
-* `l,t,w,h` is a cube. The items that intersect with it will be returned.
-* `filter` is an optional function. When provided, it is used to "filter out" which items are returned - if `filter(item)` returns
-  `false` or `nil`, that item is ignored. By default, all items are included.
-* `items` is a list of items, like in `world:queryPoint`. But instead of for a point `x,y` for a cube `l,t,w,h`.
+* `x, y, z, w, h, d` is a cube. The items that intersect with it will be returned.
+* `filter` is an optional function. When provided, it is used to "filter out" which items are returned - if `filter(item)` returns `false` or `nil`, that item is ignored. By default, all items are included.
+* `items` is a list of items, like in `world:queryPoint`.
 * `len` is equivalent to `#items`
 
 ### Querying with a segment
 
 ``` lua
-local items, len = world:querySegment(x1,y1,x2,y2,filter)
+local items, len = world:querySegment(x1, y1, z1, x2, y2, z2, filter)
 ```
 Returns the items that touch a segment.
 
 It's useful for things like line-of-sight or modelling bullets or lasers.
 
-* `x1,y1,x2,y2` are the start and end coordinates of the segment.
-* `filter` is an optional function. When provided, it is used to "filter out" which items are returned - if `filter(item)` returns
-  `false` or `nil`, that item is ignored. By default, all items are included.
-* `items` is a list of items, similar to `world:queryPoint`, intersecting with the given segment. The difference is that
-  in `world:querySegment` the items are sorted by proximity. The ones closest to `x1,y1` appear first, while the ones farther
-  away appear later.
+* `x1, y1, z1, x2, y2, z2` are the start and end coordinates of the segment.
+* `filter` is an optional function. When provided, it is used to "filter out" which items are returned - if `filter(item)` returns `false` or `nil`, that item is ignored. By default, all items are included.
+* `items` is a list of items, similar to `world:queryPoint`, intersecting with the given segment. The difference is that in `world:querySegment` the items are sorted by proximity. The ones closest to `x1, y1, z1` appear first, while the ones farther away appear later.
 * `len` is equivalent to `#items`.
 
-### Querying with a segment (with more detailed info)
+### Querying with a segment (with more detailed info) (NOTE: UNAVAILABLE RIGHT NOW)
 
 ``` lua
-local itemInfo, len = world:querySegmentWithCoords(x1,y1,x2,y2)
+local itemInfo, len = world:querySegmentWithCoords(x1, y1, z1, x2, y2, z2)
 ```
 An extended version of `world:querySegment` which returns the collision points of the segment with the items,
 in addition to the items.
@@ -420,17 +415,15 @@ It is useful if you need to **actually show** the lasers/bullets or if you need 
 where a bullet hits a wall). If you don't need the actual points of contact between the segment and the bounding cubes, use
 `world:querySegment`, since it's faster.
 
-* `x1,y1,x2,y2,filter` same as in `world:querySegment`
-* `itemInfo` is a list of tables. Each element in the table has the following elements: `item`, `x1`, `y1`, `x2`, `y2`, `t0` and `t1`.
+* `x1, y1, z1, x2, y2, z2, filter` same as in `world:querySegment`
+* `itemInfo` is a list of tables. Each element in the table has the following elements: `item`, `x1`, `y1`, `z1`, `x2`, `y2`, `z2`, `t0`, and `t1`.
   * `info.item` is the item being intersected by the segment.
-  * `info.x1,info.y1` are the coordinates of the first intersection between `item` and the segment
-  * `info.x2,info.y2` are the coordinates of the second intersection between `item` and the segment
-  * `info.ti1` & `info.ti2` are numbers between 0 and 1 which say "how far from the starting point of the segment did the impact happen"
+  * `info.x1, info.y1, info.z1` are the coordinates of the first intersection between `item` and the segment.
+  * `info.x2, info.y2, info.z2` are the coordinates of the second intersection between `item` and the segment.
+  * `info.ti1` & `info.ti2` are numbers between 0 and 1 which say "how far from the starting point of the segment did the impact happen".
 * `len` is equivalent to `#itemInfo`.
 
-Most people will only need `info.item`, `info.x1` and `info.y1`. `info.x2` and `info.y2` are useful if you also need to show "the exit point
-of a shoot", for example. `info.ti1` and `info.ti2` give an idea about the distance to the origin, so they can be used for things like
-calculating the intensity of a shooting that becomes weaker with distance.
+Most people will only need `info.item`, `info.x1`, `info.y1`, and `info.y1`. However, `info.x2`, `info.y2`, and `info.z2` are useful if you also need to show "the exit point of a bullet", for example. `info.ti1` and `info.ti2` give an idea about the distance to the origin, so they can be used for things like calculating the intensity of a shooting that becomes weaker with distance.
 
 
 ## Advanced API
@@ -454,7 +447,7 @@ Builds and returns an array containing all the items in the world (as well as it
 doing any queries. Notice that in which the items will be returned is non-deterministic.
 
 ``` lua
-local x,y,w,h = world:getCube(item)
+local x, y, z, w, h, d = world:getCube(item)
 ```
 Given an item, obtain the coordinates of its bounding cube. Useful for debugging/testing things.
 
@@ -465,27 +458,25 @@ local cell_count = world:countCells()
 Returns the number of cells being used. Useful for testing/debugging.
 
 ``` lua
-local cx,cy = world:toCell(x,y)
+local cx, cy, cz = world:toCell(x, y, z)
 ```
 
 Given a point, return the coordinates of the cell that containg it using the world's `cellSize`. Useful mostly for debugging bump-3dpd, or drawing
 debug info.
 
 ``` lua
-local x,y = world:toWorld(x,y)
+local x, y, z = world:toWorld(cx, cy, cz)
 ```
 
-The inverse of `world:toCell`. Given the coordinates of a cell, return the coordinates of its main corner (top-left in LÖVE and Corona SDK, bottom-left in Cocos2d-x) in the game world.
+The inverse of `world:toCell`. Given the coordinates of a cell, return the coordinates of its main corner in the game world.
 
 ``` lua
-local cols, len = world:project(item, x,y,w,h, goalX, goalY, filter)
+local cols, len = world:project(item, x, y, z, w, h, d, goalX, goalY, goalZ, filter)
 ```
 
 Moves a the given imaginary cube towards goalX and goalY, providing a list of collisions as they happen *in that straight path*.
 
-This method is useful mostly when creating new collision responses, although it could be also used as a query method.
-
-You could use this method to implement your own collision response algorithm.
+This method might be useful when implementing your own new collision responses, although it could be also used as a query method.
 
 ```lua
 bump.responses.touch
@@ -500,9 +491,7 @@ These are the functions bump-3dpd uses to resolve collisions by default. You can
 world:addResponse(name, response)
 ```
 
-This is how you register a new type of response in the world. All worlds come with the 4 pre-defined responses already installed, but you can add your own: if you register the
-response `'foo'`, if your filter returns `'foo'` in a collision your world will handle it with `response`. This, however, is advanced stuff, and you
-will have to read the source code of the default responses in order to know how to do that.
+This is how you register a new type of response in the world. All worlds come with the 4 pre-defined responses already installed, but you can add your own: if you register the response `'foo'`, if your filter returns `'foo'` in a collision your world will handle it with `response`. This, however, is advanced stuff, and you will have to read the source code of the default responses in order to know how to do that.
 
 ```lua
 bump.cube.getNearestCorner
@@ -510,7 +499,7 @@ bump.cube.getSegmentIntersectionIndices
 bump.cube.getDiff
 bump.cube.containsPoint
 bump.cube.isIntersecting
-bump.cube.getSquareDistance
+bump.cube.getCubeDistance
 bump.cube.detectCollision
 ```
 
@@ -545,4 +534,5 @@ See CHANGELOG.md for details
 
 ## Todo
 
+* Implement `world:querySegmentWithCoords()`.
 * Empty planes and rows should be removed from world.cells as part of garbage collection.

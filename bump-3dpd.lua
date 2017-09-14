@@ -1,5 +1,5 @@
 local bump = {
-  _VERSION     = 'bump-3dpd v0.0.0',
+  _VERSION     = 'bump-3dpd v0.1.0',
   _URL         = 'https://github.com/oniietzschan/bump-3dpd',
   _DESCRIPTION = 'A 3D collision detection library for Lua.',
   _LICENSE     = [[
@@ -158,7 +158,7 @@ local function cube_isIntersecting(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
          z1 < z2 + d2 and z2 < z1 + d1
 end
 
-local function cube_getSquareDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
+local function cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
   local dx = x1 - x2 + (w1 - w2)/2
   local dy = y1 - y2 + (h1 - h2)/2
   local dz = z1 - z2 + (d1 - d2)/2
@@ -438,8 +438,8 @@ end
 local function sortByTiAndDistance(a,b)
   if a.ti == b.ti then
     local ir, ar, br = a.itemCube, a.otherCube, b.otherCube
-    local ad = cube_getSquareDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, ar.x,ar.y,ar.z,ar.w,ar.h,ar.d)
-    local bd = cube_getSquareDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, br.x,br.y,br.z,br.w,br.h,br.d)
+    local ad = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, ar.x,ar.y,ar.z,ar.w,ar.h,ar.d)
+    local bd = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, br.x,br.y,br.z,br.w,br.h,br.d)
     return ad < bd
   end
   return a.ti < b.ti
@@ -929,7 +929,7 @@ bump.cube = {
   getDiff                       = cube_getDiff,
   containsPoint                 = cube_containsPoint,
   isIntersecting                = cube_isIntersecting,
-  getSquareDistance             = cube_getSquareDistance,
+  getCubeDistance               = cube_getCubeDistance,
   detectCollision               = cube_detectCollision
 }
 
