@@ -14,10 +14,6 @@ description = {
    ]],
    homepage = "http://github.com/oniietzschan/bump-3dpd.lua",
    license = "MIT",
-   labels = {
-      "game",
-      "love",
-   },
 }
 dependencies = {
    "lua >= 5.1",
