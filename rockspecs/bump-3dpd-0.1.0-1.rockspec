@@ -1,9 +1,8 @@
 package = "bump-3dpd"
 version = "0.1.0-1"
 source = {
-   url = "git://github.com/oniietzschan/bump-3dpd.lua",
+   url = "git://github.com/oniietzschan/bump-3dpd",
    tag = "0.1.0",
-   dir = "bump-3dpd-0.1.0",
 }
 description = {
    summary = "A 3D collision detection library for Lua",
@@ -12,7 +11,7 @@ description = {
    axis-aligned bounding boxes (AABBs). It is ideal for simple games that require
    non-realistic physics.
    ]],
-   homepage = "http://github.com/oniietzschan/bump-3dpd.lua",
+   homepage = "http://github.com/oniietzschan/bump-3dpd",
    license = "MIT",
 }
 dependencies = {
