@@ -2,7 +2,7 @@ package = "bump-3dpd"
 version = "0.1.0-1"
 source = {
    url = "git://github.com/oniietzschan/bump-3dpd.lua",
-   tag = "v0.1.0-1",
+   tag = "0.1.0",
    dir = "bump-3dpd-0.1.0",
 }
 description = {
