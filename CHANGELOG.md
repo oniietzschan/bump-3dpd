@@ -2,7 +2,7 @@
 
 ## v0.1.0
 
-* Converted bump.lua to 2 dimensions.
+* Converted bump.lua from 2 to 3 dimensions.
 * Added `main.lua` demo for Love2d.
 
 # bump.lua changelog
