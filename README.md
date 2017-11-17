@@ -474,9 +474,15 @@ The inverse of `world:toCell`. Given the coordinates of a cell, return the coord
 local cols, len = world:project(item, x, y, z, w, h, d, goalX, goalY, goalZ, filter)
 ```
 
-Moves a the given imaginary cube towards goalX and goalY, providing a list of collisions as they happen *in that straight path*.
+Moves a the given imaginary cube towards goalX, goalY, and goalZ, providing a list of collisions as they happen *in that straight path*.
 
 This method might be useful when implementing your own new collision responses, although it could be also used as a query method.
+
+```lua
+local actualX,actualY,actualZ, cols, len = world:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+```
+
+Similar to `world:project()`, except that it simulates collision responses as the cube tries to move along it's path. This is probably most useful for optimization, since it allows you to have items which move appropriately through your world without actually adding them to the world itself.
 
 ```lua
 bump.responses.touch

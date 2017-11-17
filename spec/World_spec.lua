@@ -60,9 +60,9 @@ describe('World', function()
     end)
 
     it('updates the object', function()
-      local a = world:add({}, 0,0,0,10,10,10)
+      local a = world:add({}, 0,0,0, 10,10,10)
       world:update(a, 40,40,40, 20,20,20)
-      assert.same({40,40,40,20,20,20}, {world:getCube(a)})
+      assert.same({40,40,40, 20,20,20}, {world:getCube(a)})
     end)
 
     describe('when no width or height or depth is given', function()
@@ -70,6 +70,20 @@ describe('World', function()
         local a = world:add({}, 0,0,0, 10,10,10)
         world:update(a, 5,5,5)
         assert.same({5,5,5, 10,10,10}, {world:getCube(a)})
+      end)
+    end)
+
+    describe('When the object stays in the exact same position', function()
+      it('does not invoke remove and add', function()
+        local a = world:add({}, 0,0,0, 10,10,10)
+
+        spy.on(world, 'remove')
+        spy.on(world, 'add')
+
+        world:update(a, 0,0,0, 10,10,10)
+
+        assert.spy(world.remove).was.called(0)
+        assert.spy(world.add).was.called(0)
       end)
     end)
 

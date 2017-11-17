@@ -1,5 +1,5 @@
 local bump = {
-  _VERSION     = 'bump-3dpd v0.1.0',
+  _VERSION     = 'bump-3dpd v0.2.0',
   _URL         = 'https://github.com/oniietzschan/bump-3dpd',
   _DESCRIPTION = 'A 3D collision detection library for Lua.',
   _LICENSE     = [[
@@ -585,6 +585,42 @@ function World:addResponse(name, response)
   self.responses[name] = response
 end
 
+function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+  local cols, len = {}, 0
+
+  filter = filter or defaultFilter
+
+  local visited = {[item] = true}
+  local visitedFilter = function(itm, other)
+    if visited[other] then
+      return false
+    end
+    return filter(itm, other)
+  end
+
+  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, visitedFilter)
+
+  while projected_len > 0 do
+    local col = projected_cols[1]
+    len       = len + 1
+    cols[len] = col
+
+    visited[col.other] = true
+
+    local response = getResponseByName(self, col.type)
+
+    goalX, goalY, goalZ, projected_cols, projected_len = response(
+      self,
+      col,
+      x, y, z, w, h, d,
+      goalX, goalY, goalZ,
+      visitedFilter
+    )
+  end
+
+  return goalX, goalY, goalZ, cols, len
+end
+
 function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   assertIsCube(x, y, z, w, h, d)
 
@@ -864,41 +900,9 @@ function World:move(item, goalX, goalY, goalZ, filter)
 end
 
 function World:check(item, goalX, goalY, goalZ, filter)
-  filter = filter or defaultFilter
-
-  local visited = {[item] = true}
-  local visitedFilter = function(itm, other)
-    if visited[other] then
-      return false
-    end
-    return filter(itm, other)
-  end
-
-  local cols, len = {}, 0
-
   local x,y,z,w,h,d = self:getCube(item)
 
-  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, visitedFilter)
-
-  while projected_len > 0 do
-    local col = projected_cols[1]
-    len       = len + 1
-    cols[len] = col
-
-    visited[col.other] = true
-
-    local response = getResponseByName(self, col.type)
-
-    goalX, goalY, goalZ, projected_cols, projected_len = response(
-      self,
-      col,
-      x, y, z, w, h, d,
-      goalX, goalY, goalZ,
-      visitedFilter
-    )
-  end
-
-  return goalX, goalY, goalZ, cols, len
+  return self:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 end
 
 
