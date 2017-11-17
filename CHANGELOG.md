@@ -1,5 +1,9 @@
 # bump-3dpd changelog
 
+## v0.2.0
+
+* Added World:projectMove()
+
 ## v0.1.0
 
 * Converted bump.lua from 2 to 3 dimensions.
