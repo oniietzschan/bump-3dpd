@@ -29,6 +29,46 @@ local bump = {
 }
 
 ------------------------------------------
+-- Table Pool
+------------------------------------------
+local Pool = {}
+do
+  local ok, tabelNew = pcall(require, 'table.new')
+  if not ok then
+    tabelNew = function (narr, nrec)
+      return {}
+    end
+  end
+
+  local ok, tabelClear = pcall(require, 'table.clear')
+  if not ok then
+    tabelClear = function (t)
+      for k, _ in pairs(t) do
+        t[k] = nil
+      end
+    end
+  end
+
+  local pool = {}
+  local len = 0
+
+  function Pool.fetch()
+    if len == 0 then
+      Pool.free({})
+    end
+    local t = table.remove(pool, len)
+    len = len - 1
+    return t
+  end
+
+  function Pool.free(t)
+    tabelClear(t)
+    len = len + 1
+    pool[len] = t
+  end
+end
+
+------------------------------------------
 -- Auxiliary functions
 ------------------------------------------
 local DELTA = 1e-10 -- floating-point margin of error
@@ -247,8 +287,7 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
     move      = {x = dx, y = dy, z = dz},
     normal    = {x = nx, y = ny, z = nz},
     touch     = {x = tx, y = ty, z = tz},
-    itemCube  = {x = x1, y = y1, z = z1, w = w1, h = h1, d = d1},
-    otherCube = {x = x2, y = y2, z = z2, w = w2, h = h2, d = d2},
+    distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2),
   }
 end
 
@@ -437,10 +476,7 @@ end
 
 local function sortByTiAndDistance(a,b)
   if a.ti == b.ti then
-    local ir, ar, br = a.itemCube, a.otherCube, b.otherCube
-    local ad = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, ar.x,ar.y,ar.z,ar.w,ar.h,ar.d)
-    local bd = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, br.x,br.y,br.z,br.w,br.h,br.d)
-    return ad < bd
+    return a.distance < b.distance
   end
   return a.ti < b.ti
 end
@@ -487,7 +523,7 @@ local function removeItemFromCell(self, item, cx, cy, cz)
 end
 
 local function getDictItemsInCellCube(self, cx,cy,cz, cw,ch,cd)
-  local items_dict = {}
+  local items_dict = Pool.fetch()
 
   for z = cz, cz + cd - 1 do
     local plane = self.cells[z]
@@ -541,7 +577,7 @@ end
 local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filter)
   local cells, len = getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
   local cell, cube, x,y,z,w,h,d, ti1, ti2, tii0,tii1
-  local visited, itemInfo, itemInfoLen = {}, {}, 0
+  local visited, itemInfo, itemInfoLen = Pool.fetch(), Pool.fetch(), 0
 
   for i = 1, len do
     cell = cells[i]
@@ -563,6 +599,8 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
       end
     end
   end
+
+  Pool.free(visited)
 
   table.sort(itemInfo, sortByWeight)
 
@@ -586,7 +624,7 @@ function World:addResponse(name, response)
 end
 
 function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
-  local cols, len = {}, 0
+  local cols, len = nil, 0
 
   filter = filter or defaultFilter
 
@@ -599,6 +637,10 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   end
 
   local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, visitedFilter)
+
+  if projected_len > 0 then
+    cols = {}
+  end
 
   while projected_len > 0 do
     local col = projected_cols[1]
@@ -629,9 +671,9 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   goalZ = goalZ or z
   filter = filter or defaultFilter
 
-  local collisions, len = {}, 0
+  local collisions, len = nil, 0
 
-  local visited = {}
+  local visited = Pool.fetch()
   if item ~= nil then
     visited[item] = true
   end
@@ -652,7 +694,7 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  for other,_ in pairs(dictItemsInCellCube) do
+  for other, _ in pairs(dictItemsInCellCube) do
     if not visited[other] then
       visited[other] = true
 
@@ -667,13 +709,21 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
           col.type  = responseName
 
           len = len + 1
+          if collisions == nil then
+            collisions = {}
+          end
           collisions[len] = col
         end
       end
     end
   end
 
-  table.sort(collisions, sortByTiAndDistance)
+  Pool.free(visited)
+  Pool.free(dictItemsInCellCube)
+
+  if collisions ~= nil then
+    table.sort(collisions, sortByTiAndDistance)
+  end
 
   return collisions, len
 end
@@ -737,18 +787,23 @@ function World:queryCube(x,y,z,w,h,d, filter)
   local cx,cy,cz,cw,ch,cd = grid_toCellCube(self.cellSize, x,y,z,w,h,d)
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  local items, len = {}, 0
+  local items, len = nil, 0
 
   local cube
-  for item,_ in pairs(dictItemsInCellCube) do
+  for item, _ in pairs(dictItemsInCellCube) do
     cube = self.cubes[item]
     if (not filter or filter(item))
     and cube_isIntersecting(x,y,z,w,h,d, cube.x, cube.y, cube.z, cube.w, cube.h, cube.d)
     then
       len = len + 1
+      if items == nil then
+        items = {}
+      end
       items[len] = item
     end
   end
+
+  Pool.free(dictItemsInCellCube)
 
   return items, len
 end
@@ -770,15 +825,20 @@ function World:queryPoint(x,y,z, filter)
     end
   end
 
+  Pool.free(dictItemsInCellCube)
+
   return items, len
 end
 
 function World:querySegment(x1, y1, z1, x2, y2, z2, filter)
   local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, z1, x2, y2, z2, filter)
+
   local items = {}
   for i = 1, len do
     items[i] = itemInfo[i].item
   end
+
+  Pool.free(itemInfo)
 
   return items, len
 end
