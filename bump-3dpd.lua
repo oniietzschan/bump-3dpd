@@ -387,17 +387,17 @@ end
 -- Responses
 ------------------------------------------
 
-local touch = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local touch = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   return col.touch.x, col.touch.y, col.touch.z, {}, 0
 end
 
-local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
 
-local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   goalX = goalX or x
   goalY = goalY or y
   goalZ = goalZ or z
@@ -418,12 +418,12 @@ local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
   col.slide = {x = goalX, y = goalY, z = goalZ}
 
   x, y, z = tch.x, tch.y, tch.z
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
 
-local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   goalX = goalX or x
   goalY = goalY or y
   goalZ = goalZ or z
@@ -456,7 +456,7 @@ local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
   x, y, z = tch.x, tch.y, tch.z
   goalX, goalY, goalZ = bx, by, bz
 
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
@@ -624,23 +624,18 @@ function World:addResponse(name, response)
 end
 
 function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
-  local cols, len = nil, 0
-
   filter = filter or defaultFilter
 
-  local visited = {[item] = true}
-  local visitedFilter = function(itm, other)
-    if visited[other] then
-      return false
-    end
-    return filter(itm, other)
+  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+
+  if projected_len == 0 then
+    return goalX, goalY, goalZ, nil, 0
   end
 
-  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, visitedFilter)
+  local cols, len = {}, 0
 
-  if projected_len > 0 then
-    cols = {}
-  end
+  local visited = Pool.fetch()
+  visited[item] = true
 
   while projected_len > 0 do
     local col = projected_cols[1]
@@ -656,14 +651,15 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
       col,
       x, y, z, w, h, d,
       goalX, goalY, goalZ,
-      visitedFilter
+      filter,
+      visited
     )
   end
 
   return goalX, goalY, goalZ, cols, len
 end
 
-function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisited)
   assertIsCube(x, y, z, w, h, d)
 
   goalX = goalX or x
@@ -695,7 +691,7 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
   for other, _ in pairs(dictItemsInCellCube) do
-    if not visited[other] then
+    if not visited[other] and (alreadyVisited == nil or not alreadyVisited[other]) then
       visited[other] = true
 
       local responseName = filter(item, other)
