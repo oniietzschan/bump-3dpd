@@ -33,13 +33,6 @@ local bump = {
 ------------------------------------------
 local Pool = {}
 do
-  local ok, tabelNew = pcall(require, 'table.new')
-  if not ok then
-    tabelNew = function (narr, nrec)
-      return {}
-    end
-  end
-
   local ok, tabelClear = pcall(require, 'table.clear')
   if not ok then
     tabelClear = function (t)
