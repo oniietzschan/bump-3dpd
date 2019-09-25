@@ -33,9 +33,9 @@ local bump = {
 ------------------------------------------
 local Pool = {}
 do
-  local ok, tabelClear = pcall(require, 'table.clear')
+  local ok, tableClear = pcall(require, 'table.clear')
   if not ok then
-    tabelClear = function (t)
+    tableClear = function (t)
       for k, _ in pairs(t) do
         t[k] = nil
       end
@@ -55,7 +55,7 @@ do
   end
 
   function Pool.free(t)
-    tabelClear(t)
+    tableClear(t)
     len = len + 1
     pool[len] = t
   end
