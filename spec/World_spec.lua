@@ -343,6 +343,90 @@ describe('World', function()
     end)
   end)
 
+  describe(':querySegmentWithCoords', function()
+    it('returns nothing when the world is empty', function()
+      assert.same(world:querySegmentWithCoords(0,0,0,1,1,1), {})
+    end)
+
+    it('does not touch borders', function()
+      world:add({'a'}, 10,0,0, 5,5,5)
+      world:add({'c'}, 20,0,0, 5,5,5)
+
+      assert.same({}, world:querySegmentWithCoords( 0,5,0, 10,0,0))
+      assert.same({}, world:querySegmentWithCoords(15,5,0, 20,0,0))
+      assert.same({}, world:querySegmentWithCoords(26,5,0, 25,0,0))
+    end)
+
+    describe("when the world has items", function()
+      local a, b, c
+
+      before_each(function()
+        a = world:add('a',  5,0,0, 5,10,10)
+        b = world:add('b', 15,0,0, 5,10,10)
+        c = world:add('c', 22.5,0,0, 7.5,10,10)
+      end)
+
+      it('returns the items touched by the segment, sorted by touch order', function()
+        local expected = {
+          {
+            item = 'a',
+            ti1 = 0.16666666666666665741,
+            ti2 = 0.33333333333333331483,
+            x1 = 5,
+            y1 = 5,
+            z1 = 1.6666666666666665186,
+            x2 = 10,
+            y2 = 5,
+            z2 = 3.3333333333333330373,
+          },
+          {
+            item = 'b',
+            ti1 = 0.5,
+            ti2 = 0.66666666666666662966,
+            x1 = 15,
+            y1 = 5,
+            z1 = 5,
+            x2 = 20,
+            y2 = 5,
+            z2 = 6.6666666666666660745,
+          },
+          {
+            item = 'c',
+            ti1 = 0.75,
+            ti2 = 1,
+            x1 = 22.5,
+            y1 = 5,
+            z1 = 7.5,
+            x2 = 30,
+            y2 = 5,
+            z2 = 10,
+          },
+        }
+        assert.same(expected, world:querySegmentWithCoords( 0,5,0, 30,5,10))
+      end)
+
+      it('filters out items when filter does not return true for them', function()
+        local filter = function(other)
+          return other ~= a and other ~= c
+        end
+        local expected = {
+          {
+            item = 'b',
+            ti1 = 0.5,
+            ti2 = 0.66666666666666662966,
+            x1 = 15,
+            y1 = 5,
+            z1 = 5,
+            x2 = 20,
+            y2 = 5,
+            z2 = 6.6666666666666660745,
+          },
+        }
+        assert.same(expected, world:querySegmentWithCoords( 0,5,0, 30,5,10, filter))
+      end)
+    end)
+  end)
+
   describe(":hasItem", function()
     it('returns wether the world has an item', function()
       local item = {}
