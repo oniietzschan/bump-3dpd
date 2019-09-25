@@ -404,10 +404,10 @@ It's useful for things like line-of-sight or modelling bullets or lasers.
 * `items` is a list of items, similar to `world:queryPoint`, intersecting with the given segment. The difference is that in `world:querySegment` the items are sorted by proximity. The ones closest to `x1, y1, z1` appear first, while the ones farther away appear later.
 * `len` is equivalent to `#items`.
 
-### Querying with a segment (with more detailed info) (NOTE: UNAVAILABLE RIGHT NOW)
+### Querying with a segment (with more detailed info)
 
 ``` lua
-local itemInfo, len = world:querySegmentWithCoords(x1, y1, z1, x2, y2, z2)
+local itemInfo, len = world:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, filter)
 ```
 An extended version of `world:querySegment` which returns the collision points of the segment with the items,
 in addition to the items.
@@ -424,7 +424,7 @@ where a bullet hits a wall). If you don't need the actual points of contact betw
   * `info.ti1` & `info.ti2` are numbers between 0 and 1 which say "how far from the starting point of the segment did the impact happen".
 * `len` is equivalent to `#itemInfo`.
 
-Most people will only need `info.item`, `info.x1`, `info.y1`, and `info.y1`. However, `info.x2`, `info.y2`, and `info.z2` are useful if you also need to show "the exit point of a bullet", for example. `info.ti1` and `info.ti2` give an idea about the distance to the origin, so they can be used for things like calculating the intensity of a shooting that becomes weaker with distance.
+Most people will only need `info.item`, `info.x1`, `info.y1`, `info.y1`, and `info.z2`. However, `info.x2`, `info.y2`, and `info.z2` are useful if you also need to show "the exit point of a bullet", for example. `info.ti1` and `info.ti2` give an idea about the distance to the origin, so they can be used for things like calculating the intensity of a shooting that becomes weaker with distance.
 
 
 ## Advanced API

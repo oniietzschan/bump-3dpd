@@ -783,23 +783,25 @@ function World:querySegment(x1, y1, z1, x2, y2, z2, filter)
   return items, len
 end
 
--- function World:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, filter)
---   local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, z1, x2, y2, z2, filter)
---   local dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
---   local info, ti1, ti2
---   for i=1, len do
---     info  = itemInfo[i]
---     ti1   = info.ti1
---     ti2   = info.ti2
+function World:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, filter)
+  local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, z1, x2, y2, z2, filter)
+  local dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
+  local info, ti1, ti2, tii0,tii1
+  for i = 1, len do
+    info = itemInfo[i]
+    ti1 = info.ti1
+    ti2 = info.ti2
 
---     info.weight  = nil
---     info.x1      = x1 + dx * ti1
---     info.y1      = y1 + dy * ti1
---     info.x2      = x1 + dx * ti2
---     info.y2      = y1 + dy * ti2
---   end
---   return itemInfo, len
--- end
+    info.weight = nil
+    info.x1 = x1 + dx * ti1
+    info.y1 = y1 + dy * ti1
+    info.z1 = z1 + dz * ti1
+    info.x2 = x1 + dx * ti2
+    info.y2 = y1 + dy * ti2
+    info.z2 = z1 + dz * ti2
+  end
+  return itemInfo, len
+end
 
 
 --- Main methods
