@@ -369,7 +369,7 @@ describe('World', function()
       it('returns the items touched by the segment, sorted by touch order', function()
         local expected = {
           {
-            item = 'a',
+            item = a,
             ti1 = 0.16666666666666665741,
             ti2 = 0.33333333333333331483,
             x1 = 5,
@@ -380,7 +380,7 @@ describe('World', function()
             z2 = 3.3333333333333330373,
           },
           {
-            item = 'b',
+            item = b,
             ti1 = 0.5,
             ti2 = 0.66666666666666662966,
             x1 = 15,
@@ -391,7 +391,7 @@ describe('World', function()
             z2 = 6.6666666666666660745,
           },
           {
-            item = 'c',
+            item = c,
             ti1 = 0.75,
             ti2 = 1,
             x1 = 22.5,
@@ -411,7 +411,7 @@ describe('World', function()
         end
         local expected = {
           {
-            item = 'b',
+            item = b,
             ti1 = 0.5,
             ti2 = 0.66666666666666662966,
             x1 = 15,
