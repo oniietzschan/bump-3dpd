@@ -569,7 +569,7 @@ end
 
 local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filter)
   local cells, len = getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
-  local cell, cube, x,y,z,w,h,d, ti1, ti2, tii0,tii1
+  local cell, cube, x,y,z,w,h,d, ti1, ti2, tii0, tii1
   local visited, itemInfo, itemInfoLen = Pool.fetch(), Pool.fetch(), 0
 
   for i = 1, len do
@@ -835,7 +835,7 @@ end
 function World:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, filter)
   local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, z1, x2, y2, z2, filter)
   local dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
-  local info, ti1, ti2, tii0,tii1
+  local info, ti1, ti2
   for i = 1, len do
     info = itemInfo[i]
     ti1 = info.ti1
