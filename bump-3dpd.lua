@@ -616,13 +616,15 @@ function World:addResponse(name, response)
   self.responses[name] = response
 end
 
+local EMPTY_TABLE = {}
+
 function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   filter = filter or defaultFilter
 
   local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
   if projected_len == 0 then
-    return goalX, goalY, goalZ, nil, 0
+    return goalX, goalY, goalZ, EMPTY_TABLE, 0
   end
 
   local cols, len = {}, 0
@@ -714,7 +716,7 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
     table.sort(collisions, sortByTiAndDistance)
   end
 
-  return collisions, len
+  return collisions or EMPTY_TABLE, len
 end
 
 function World:countCells()

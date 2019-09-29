@@ -60,7 +60,7 @@ local function doTest(world)
 end
 
 local function doTests(label, bump)
-  print(("\n\n============= %s ============="):format(label))
+  print(("============= %s ============="):format(label))
   local totalGarbage = 0
   for i = 1, TEST_COUNT do
     local world = bump.newWorld(1)
@@ -69,8 +69,9 @@ local function doTests(label, bump)
   end
   local averageGarbage = totalGarbage / TEST_COUNT
   print(("Garbage: %.2f kB"):format(averageGarbage))
-  print(("(Average after %d tests.)"):format(TEST_COUNT))
+  print(("(Average after %d tests.)\n"):format(TEST_COUNT))
 end
 
-doTests('Original', require 'bump-3dpd-original')
+-- doTests('Original', require 'bump-3dpd-original')
+doTests('collisions = nil', require 'bump-3dpd-nil')
 doTests('New', require 'bump-3dpd')
