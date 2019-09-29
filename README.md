@@ -541,5 +541,4 @@ See CHANGELOG.md for details
 
 ## Todo
 
-* Implement `world:querySegmentWithCoords()`.
 * Empty planes and rows should be removed from world.cells as part of garbage collection.
