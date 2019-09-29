@@ -108,8 +108,8 @@ describe('World', function()
     end)
 
     describe('when the world is empty', function()
-      it('returns an empty list of collisions', function()
-        assert.same(world:project({}, 1,2,3,4,5,6), {})
+      it('returns nil collisions', function()
+        assert.same({}, world:project({}, 1,2,3,4,5,6))
       end)
     end)
 
@@ -173,7 +173,7 @@ describe('World', function()
       local a = world:add({'a'}, 2,2,2, 6,6,6)
       assert.same(1, #world:project({}, 0,0,0,10,10,10))
       world:remove(a)
-      assert.same(0, #world:project({}, 0,0,0,10,10,10))
+      assert.same({}, world:project({}, 0,0,0,10,10,10))
     end)
 
     it('marks empty cells & rows for deallocation', function()
@@ -185,6 +185,9 @@ describe('World', function()
       assert.same('table', type(world.cells[4][4]))
       assert.same('table', type(world.cells[4][4][4]))
 
+      -- Stop GC... Was flakey in Lua 5.3 once after garbage was collected before assertions.
+      collectgarbage('stop')
+
       world:remove(b)
 
       assert.same(2, world:countCells())
@@ -192,6 +195,7 @@ describe('World', function()
       assert.same('table', type(world.cells[4][4]))
       assert.same('table', type(world.cells[4][4][4]))
 
+      collectgarbage('restart')
       collectgarbage('collect')
 
       assert.same(1, world:countCells())
@@ -223,8 +227,8 @@ describe('World', function()
       assert.error(function() world:queryCube(0,0,0,-1,-1,-1) end)
     end)
 
-    it('returns nothing when the world is empty', function()
-      assert.same(world:queryCube(0,0,0,1,1,1), {})
+    it('returns nil when the world is empty', function()
+      assert.same(world:queryCube(0,0,0,1,1,1), nil)
     end)
 
     describe('when the world has items', function()
@@ -474,12 +478,10 @@ describe('World', function()
     end)
 
     describe('when there are no collisions', function()
-      it('it moves the object, and returns zero collisions', function()
+      it('it moves the object, and returns nil collisions', function()
         local x, y, z, cols, len = world:move(a, 1,1,1)
 
-        assert.same(1, x)
-        assert.same(1, y)
-        assert.same(1, z)
+        assert.same({1, 1, 1}, {x, y, z})
         assert.same({}, cols)
         assert.same(0, len)
       end)
@@ -550,6 +552,26 @@ describe('World', function()
         assert.same(collect(cols, 'other'), {'b'})
         assert.same(collect(cols, 'type'),  {'bounce'})
         assert.same({0,-3,0, 1,1,1}, {world:getCube(a)})
+      end)
+    end)
+
+    describe('when multiple response types encountered in path', function()
+      it('should cross then slide', function()
+        local ghostA = {solid = false}
+        local ghostB = {solid = false}
+        local wall   = {solid = true}
+        world:add(ghostA, 2, 0, 0, 1, 1, 1)
+        world:add(ghostB, 4, 0, 0, 1, 1, 1)
+        world:add(wall,   6, 0, 0, 1, 1, 1)
+        local filter = function(this, other)
+          return other.solid and 'slide' or 'cross'
+        end
+        local x, y, z, cols, len = world:move(a, 10, 0, 0, filter)
+        assert.same({5, 0, 0}, {x, y, z})
+        assert.equal(3, len)
+        assert.same(collect(cols, 'other'), {ghostA, ghostB, wall})
+        assert.same(collect(cols, 'type'),  {'cross', 'cross', 'slide'})
+        assert.same({5, 0, 0, 1, 1, 1}, {world:getCube(a)})
       end)
     end)
   end)

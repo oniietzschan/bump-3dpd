@@ -1,36 +1,76 @@
-local bump = {
-  _VERSION     = 'bump-3dpd v0.2.0',
-  _URL         = 'https://github.com/oniietzschan/bump-3dpd',
-  _DESCRIPTION = 'A 3D collision detection library for Lua.',
-  _LICENSE     = [[
-    MIT LICENSE
+--[[
 
-    Copyright (c) 2014 Enrique García Cota
+bump-3dpd 1.0.0
+===============
 
-    Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
+bump-3dpd by shru. (see: https://github.com/oniietzschan/bump-3dpd)
 
-    The above copyright notice and this permission notice shall be included
-    in all copies or substantial portions of the Software.
+This is a 3D conversion of kikito's excellent bump.lua. (see: https://github.com/kikito/bump.lua)
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  ]]
-}
+MIT LICENSE
+-----------
+
+Copyright (c) 2014 Enrique García Cota
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--]]
+
+------------------------------------------
+-- Table Pool
+------------------------------------------
+
+local Pool = {}
+do
+  local ok, tableClear = pcall(require, 'table.clear')
+  if not ok then
+    tableClear = function (t)
+      for k, _ in pairs(t) do
+        t[k] = nil
+      end
+    end
+  end
+
+  local pool = {}
+  local len = 0
+
+  function Pool.fetch()
+    if len == 0 then
+      Pool.free({})
+    end
+    local t = table.remove(pool, len)
+    len = len - 1
+    return t
+  end
+
+  function Pool.free(t)
+    tableClear(t)
+    len = len + 1
+    pool[len] = t
+  end
+end
 
 ------------------------------------------
 -- Auxiliary functions
 ------------------------------------------
+
 local DELTA = 1e-10 -- floating-point margin of error
 
 local abs, floor, ceil, min, max = math.abs, math.floor, math.ceil, math.min, math.max
@@ -247,8 +287,7 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
     move      = {x = dx, y = dy, z = dz},
     normal    = {x = nx, y = ny, z = nz},
     touch     = {x = tx, y = ty, z = tz},
-    itemCube  = {x = x1, y = y1, z = z1, w = w1, h = h1, d = d1},
-    otherCube = {x = x2, y = y2, z = z2, w = w2, h = h2, d = d2},
+    distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2),
   }
 end
 
@@ -348,17 +387,17 @@ end
 -- Responses
 ------------------------------------------
 
-local touch = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local touch = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   return col.touch.x, col.touch.y, col.touch.z, {}, 0
 end
 
-local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
 
-local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   goalX = goalX or x
   goalY = goalY or y
   goalZ = goalZ or z
@@ -379,12 +418,12 @@ local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
   col.slide = {x = goalX, y = goalY, z = goalZ}
 
   x, y, z = tch.x, tch.y, tch.z
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
 
-local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
   goalX = goalX or x
   goalY = goalY or y
   goalZ = goalZ or z
@@ -417,7 +456,7 @@ local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
   x, y, z = tch.x, tch.y, tch.z
   goalX, goalY, goalZ = bx, by, bz
 
-  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter)
+  local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
 end
@@ -437,10 +476,7 @@ end
 
 local function sortByTiAndDistance(a,b)
   if a.ti == b.ti then
-    local ir, ar, br = a.itemCube, a.otherCube, b.otherCube
-    local ad = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, ar.x,ar.y,ar.z,ar.w,ar.h,ar.d)
-    local bd = cube_getCubeDistance(ir.x,ir.y,ir.z,ir.w,ir.h,ir.d, br.x,br.y,br.z,br.w,br.h,br.d)
-    return ad < bd
+    return a.distance < b.distance
   end
   return a.ti < b.ti
 end
@@ -487,7 +523,7 @@ local function removeItemFromCell(self, item, cx, cy, cz)
 end
 
 local function getDictItemsInCellCube(self, cx,cy,cz, cw,ch,cd)
-  local items_dict = {}
+  local items_dict = Pool.fetch()
 
   for z = cz, cz + cd - 1 do
     local plane = self.cells[z]
@@ -541,7 +577,7 @@ end
 local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filter)
   local cells, len = getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
   local cell, cube, x,y,z,w,h,d, ti1, ti2, tii0, tii1
-  local visited, itemInfo, itemInfoLen = {}, {}, 0
+  local visited, itemInfo, itemInfoLen = Pool.fetch(), Pool.fetch(), 0
 
   for i = 1, len do
     cell = cells[i]
@@ -564,6 +600,8 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
     end
   end
 
+  Pool.free(visited)
+
   table.sort(itemInfo, sortByWeight)
 
   return itemInfo, itemInfoLen
@@ -585,20 +623,21 @@ function World:addResponse(name, response)
   self.responses[name] = response
 end
 
-function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
-  local cols, len = {}, 0
+local EMPTY_TABLE = {}
 
+function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   filter = filter or defaultFilter
 
-  local visited = {[item] = true}
-  local visitedFilter = function(itm, other)
-    if visited[other] then
-      return false
-    end
-    return filter(itm, other)
+  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+
+  if projected_len == 0 then
+    return goalX, goalY, goalZ, EMPTY_TABLE, 0
   end
 
-  local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, visitedFilter)
+  local cols, len = {}, 0
+
+  local visited = Pool.fetch()
+  visited[item] = true
 
   while projected_len > 0 do
     local col = projected_cols[1]
@@ -614,14 +653,15 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
       col,
       x, y, z, w, h, d,
       goalX, goalY, goalZ,
-      visitedFilter
+      filter,
+      visited
     )
   end
 
   return goalX, goalY, goalZ, cols, len
 end
 
-function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
+function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisited)
   assertIsCube(x, y, z, w, h, d)
 
   goalX = goalX or x
@@ -629,9 +669,9 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   goalZ = goalZ or z
   filter = filter or defaultFilter
 
-  local collisions, len = {}, 0
+  local collisions, len = nil, 0
 
-  local visited = {}
+  local visited = Pool.fetch()
   if item ~= nil then
     visited[item] = true
   end
@@ -652,8 +692,8 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  for other,_ in pairs(dictItemsInCellCube) do
-    if not visited[other] then
+  for other, _ in pairs(dictItemsInCellCube) do
+    if not visited[other] and (alreadyVisited == nil or not alreadyVisited[other]) then
       visited[other] = true
 
       local responseName = filter(item, other)
@@ -667,15 +707,23 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
           col.type  = responseName
 
           len = len + 1
+          if collisions == nil then
+            collisions = {}
+          end
           collisions[len] = col
         end
       end
     end
   end
 
-  table.sort(collisions, sortByTiAndDistance)
+  Pool.free(visited)
+  Pool.free(dictItemsInCellCube)
 
-  return collisions, len
+  if collisions ~= nil then
+    table.sort(collisions, sortByTiAndDistance)
+  end
+
+  return collisions or EMPTY_TABLE, len
 end
 
 function World:countCells()
@@ -737,18 +785,23 @@ function World:queryCube(x,y,z,w,h,d, filter)
   local cx,cy,cz,cw,ch,cd = grid_toCellCube(self.cellSize, x,y,z,w,h,d)
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  local items, len = {}, 0
+  local items, len = nil, 0
 
   local cube
-  for item,_ in pairs(dictItemsInCellCube) do
+  for item, _ in pairs(dictItemsInCellCube) do
     cube = self.cubes[item]
     if (not filter or filter(item))
     and cube_isIntersecting(x,y,z,w,h,d, cube.x, cube.y, cube.z, cube.w, cube.h, cube.d)
     then
       len = len + 1
+      if items == nil then
+        items = {}
+      end
       items[len] = item
     end
   end
+
+  Pool.free(dictItemsInCellCube)
 
   return items, len
 end
@@ -770,15 +823,20 @@ function World:queryPoint(x,y,z, filter)
     end
   end
 
+  Pool.free(dictItemsInCellCube)
+
   return items, len
 end
 
 function World:querySegment(x1, y1, z1, x2, y2, z2, filter)
   local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, z1, x2, y2, z2, filter)
+
   local items = {}
   for i = 1, len do
     items[i] = itemInfo[i].item
   end
+
+  Pool.free(itemInfo)
 
   return items, len
 end
@@ -909,6 +967,8 @@ end
 
 
 -- Public library functions
+
+local bump = {}
 
 bump.newWorld = function(cellSize)
   cellSize = cellSize or 64
