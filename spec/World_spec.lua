@@ -185,6 +185,9 @@ describe('World', function()
       assert.same('table', type(world.cells[4][4]))
       assert.same('table', type(world.cells[4][4][4]))
 
+      -- Stop GC... Was flakey in Lua 5.3 once after garbage was collected before assertions.
+      collectgarbage('stop')
+
       world:remove(b)
 
       assert.same(2, world:countCells())
@@ -192,6 +195,7 @@ describe('World', function()
       assert.same('table', type(world.cells[4][4]))
       assert.same('table', type(world.cells[4][4][4]))
 
+      collectgarbage('restart')
       collectgarbage('collect')
 
       assert.same(1, world:countCells())
