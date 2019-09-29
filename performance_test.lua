@@ -72,6 +72,5 @@ local function doTests(label, bump)
   print(("(Average after %d tests.)\n"):format(TEST_COUNT))
 end
 
--- doTests('Original', require 'bump-3dpd-original')
-doTests('collisions = nil', require 'bump-3dpd-nil')
+doTests('Original', require 'bump-3dpd-original')
 doTests('New', require 'bump-3dpd')

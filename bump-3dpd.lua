@@ -1,36 +1,42 @@
-local bump = {
-  _VERSION     = 'bump-3dpd v0.2.0',
-  _URL         = 'https://github.com/oniietzschan/bump-3dpd',
-  _DESCRIPTION = 'A 3D collision detection library for Lua.',
-  _LICENSE     = [[
-    MIT LICENSE
+--[[
 
-    Copyright (c) 2014 Enrique García Cota
+bump-3dpd 1.0.0
+===============
 
-    Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
+bump-3dpd by shru. (see: https://github.com/oniietzschan/bump-3dpd)
 
-    The above copyright notice and this permission notice shall be included
-    in all copies or substantial portions of the Software.
+This is a 3D conversion of kikito's excellent bump.lua. (see: https://github.com/kikito/bump.lua)
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  ]]
-}
+MIT LICENSE
+-----------
+
+Copyright (c) 2014 Enrique García Cota
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+--]]
 
 ------------------------------------------
 -- Table Pool
 ------------------------------------------
+
 local Pool = {}
 do
   local ok, tableClear = pcall(require, 'table.clear')
@@ -64,6 +70,7 @@ end
 ------------------------------------------
 -- Auxiliary functions
 ------------------------------------------
+
 local DELTA = 1e-10 -- floating-point margin of error
 
 local abs, floor, ceil, min, max = math.abs, math.floor, math.ceil, math.min, math.max
@@ -960,6 +967,8 @@ end
 
 
 -- Public library functions
+
+local bump = {}
 
 bump.newWorld = function(cellSize)
   cellSize = cellSize or 64
