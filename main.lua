@@ -11,26 +11,9 @@ local isDrawConsole = false
 local collisionsThisTick = 0
 
 local world = bump3dpd.newWorld()
+local entities = {}
 
-local playerHeight = 25
-local player = {
-  name = 'player',
-  x = 50,
-  y = 50,
-  z = -playerHeight,
-  w = 20,
-  h = 20,
-  d = playerHeight,
-  zVelocity = 0,
-  speed = 140,
-  jump = 375,
-  gravity = 750,
-  color = {
-    r = 0,
-    g = 255,
-    b = 0,
-  },
-}
+local player
 
 local consoleBuffer = {}
 local consoleBufferSize = 15
@@ -42,19 +25,42 @@ local function addBlock(x,y,z,w,h,d)
   local block = {
     name = 'block',
     color = {
-      r = 255,
+      r = 1,
       g = 0,
       b = 0,
     },
   }
   world:add(block, x,y,z,w,h,d)
+  table.insert(entities, block)
 
   return block
 end
 
-function love.load()
+local function createPlayer()
+  local PLAYER_HEIGHT = 25
+  player = {
+    name = 'player',
+    x = 50,
+    y = 50,
+    z = -PLAYER_HEIGHT,
+    w = 20,
+    h = 20,
+    d = PLAYER_HEIGHT,
+    zVelocity = 0,
+    speed = 140,
+    jump = 375,
+    gravity = 750,
+    color = {
+      r = 0,
+      g = 1,
+      b = 0,
+    },
+  }
   world:add(player, player.x, player.y, player.z, player.w, player.h, player.d)
+  table.insert(entities, player)
+end
 
+function love.load()
   -- Add floor.
   local floor = addBlock(0, 0, 0, 800, 600, 5)
   floor.invisible = true
@@ -66,7 +72,7 @@ function love.load()
   addBlock(     0,     32, -20,     32, 600-32, 20)
 
   -- Add 30 random blocks. No intersection.
-  for i=1,30 do
+  for _ = 1, 30 do
     local verticalMagnitude = math.random(10, 100)
 
     local x = math.random(100, 600)
@@ -76,11 +82,13 @@ function love.load()
     local h = math.random(10, 100)
     local d = verticalMagnitude
 
-    local items = world:queryCube(x, y, z, w, h, d)
-    if #items == 0 then
+    local _, len = world:queryCube(x, y, z, w, h, d)
+    if len == 0 then
       addBlock(x, y, z, w, h, d)
     end
   end
+
+  createPlayer()
 end
 
 local function consolePrint(msg)
@@ -122,7 +130,11 @@ local function updatePlayer(dt)
       player.y + dy,
       player.z + player.zVelocity * dt
     )
-    for i=1, collisionsThisTick do
+    -- if collisionsThisTick >= 1 then
+    --   local Serpent = require 'demolibs.serpent'
+    --   print(Serpent.block(cols))
+    -- end
+    for i = collisionsThisTick, 1, -1 do
       local col = cols[i]
       consolePrint(("col.other = %s, col.type = %s, col.normal = %d,%d,%d"):format(
         col.other,
@@ -172,11 +184,11 @@ do
   -- We use the original, 2d version of bump.lua in order to detect which items
   -- overlap when painting the world.
   -- https://github.com/kikito/bump.lua
-  local bump2d   = require 'demolibs.bump'
+  local bump2d = require 'demolibs.bump'
 
   -- Topological sorting library.
   -- https://github.com/bungle/lua-resty-tsort
-  local tsort    = require 'demolibs.tsort'
+  local tsort = require 'demolibs.tsort'
 
   local world2d = bump2d.newWorld()
 
@@ -247,39 +259,48 @@ do
   end
 end
 
-local function drawItem(item)
-  if item.invisible == true then
-    return
-  end
-
-  local setAlpha = function(alpha)
+local drawWorld
+do
+  local _ITEM
+  local function SET_ALPHA(alpha)
     love.graphics.setColor(
-      item.color.r * alpha,
-      item.color.g * alpha,
-      item.color.b * alpha
+      _ITEM.color.r * alpha,
+      _ITEM.color.g * alpha,
+      _ITEM.color.b * alpha
     )
   end
 
-  local x,y,z,w,h,d = world:getCube(item)
+  local function DRAW_ITEM(item)
+    if item.invisible then
+      return
+    end
 
-  -- Front Side
-  setAlpha(0.3)
-  love.graphics.rectangle("fill", x, y + z + h, w, d)
-  setAlpha(1)
-  love.graphics.rectangle("line", x, y + z + h, w, d)
+    _ITEM = item
 
-  -- Top
-  setAlpha(0.5)
-  love.graphics.rectangle("fill", x, y + z, w, h)
-  setAlpha(1)
-  love.graphics.rectangle("line", x, y + z, w, h)
-end
+    local x,y,z,w,h,d = world:getCube(item)
 
-local drawWorld = function()
-  drawPlayerShadow()
+    -- Front Side
+    SET_ALPHA(0.3)
+    love.graphics.rectangle("fill", x, y + z + h, w, d)
+    SET_ALPHA(1)
+    love.graphics.rectangle("line", x, y + z + h, w, d)
 
-  for _, item in ipairs(getZSortedItems()) do
-    drawItem(item)
+    -- Top
+    SET_ALPHA(0.5)
+    love.graphics.rectangle("fill", x, y + z, w, h)
+    SET_ALPHA(1)
+    love.graphics.rectangle("line", x, y + z, w, h)
+
+    _ITEM = nil
+  end
+
+
+  drawWorld = function()
+    drawPlayerShadow()
+    -- for _, item in ipairs(entities) do
+    for _, item in ipairs(getZSortedItems()) do
+      DRAW_ITEM(item)
+    end
   end
 end
 
@@ -293,12 +314,14 @@ local INSTRUCTIONS = [[
 ]]
 
 local function drawInstructions()
-  love.graphics.setColor(255, 255, 255)
+  love.graphics.setColor(1, 1, 1)
   love.graphics.print(INSTRUCTIONS, 550, 10)
 end
 
+local DEBUG_TEMPLATE = "fps: %d, mem: %dKB, mem/frame: %.3fKB, collisions: %d, items: %d"
+
 local function drawDebug()
-  local statistics = ("fps: %d, mem: %dKB, mem/frame: %.3fKB, collisions: %d, items: %d"):format(
+  local statistics = DEBUG_TEMPLATE:format(
     love.timer.getFPS(),
     collectgarbage("count"),
     memoryChangeThisFrame,
@@ -308,20 +331,19 @@ local function drawDebug()
     player.y,
     player.z
   )
-  love.graphics.setColor(255, 255, 255)
+  love.graphics.setColor(1, 1, 1)
   love.graphics.printf(statistics, 0, 580, 790, 'right')
 end
 
 local function drawConsole()
   for i = 1, consoleBufferSize do
-    love.graphics.setColor(255,255,255, i*255/consoleBufferSize)
+    love.graphics.setColor(1, 1, 1, i / consoleBufferSize)
     love.graphics.printf(consoleBuffer[i], 10, 580-(consoleBufferSize - i)*12, 790, "left")
   end
 end
 
 function love.draw()
   drawWorld()
-
   drawInstructions()
   drawDebug()
   if isDrawConsole then
