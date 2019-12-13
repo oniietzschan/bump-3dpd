@@ -8,12 +8,12 @@ local touch = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
   local col = detect(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
 
   return {
-    col.touch.x,
-    col.touch.y,
-    col.touch.z,
-    col.normal.x,
-    col.normal.y,
-    col.normal.z,
+    col.touchX,
+    col.touchY,
+    col.touchZ,
+    col.normalX,
+    col.normalY,
+    col.normalZ,
   }
 end
 
@@ -22,15 +22,15 @@ local slide = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
   responses.slide(world, col, x,y,z,w,h,d, goalX, goalY, goalZ)
 
   return {
-    col.touch.x,
-    col.touch.y,
-    col.touch.z,
-    col.normal.x,
-    col.normal.y,
-    col.normal.z,
-    col.slide.x,
-    col.slide.y,
-    col.slide.z,
+    col.touchX,
+    col.touchY,
+    col.touchZ,
+    col.normalX,
+    col.normalY,
+    col.normalZ,
+    col.slideX,
+    col.slideY,
+    col.slideZ,
   }
 end
 
@@ -39,15 +39,15 @@ local bounce = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
   responses.bounce(world, col, x,y,z,w,h,d, goalX, goalY, goalZ)
 
   return {
-    col.touch.x,
-    col.touch.y,
-    col.touch.z,
-    col.normal.x,
-    col.normal.y,
-    col.normal.z,
-    col.bounce.x,
-    col.bounce.y,
-    col.bounce.z,
+    col.touchX,
+    col.touchY,
+    col.touchZ,
+    col.normalX,
+    col.normalY,
+    col.normalZ,
+    col.bounceX,
+    col.bounceY,
+    col.bounceZ,
   }
 end
 

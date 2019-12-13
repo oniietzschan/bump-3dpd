@@ -282,12 +282,18 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
   end
 
   return {
-    overlaps  = overlaps,
-    ti        = ti,
-    move      = {x = dx, y = dy, z = dz},
-    normal    = {x = nx, y = ny, z = nz},
-    touch     = {x = tx, y = ty, z = tz},
+    overlaps = overlaps,
+    ti = ti,
     distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2),
+    moveX = dx,
+    moveY = dy,
+    moveZ = dz,
+    normalX = nx,
+    normalY = ny,
+    normalZ = nz,
+    touchX = tx,
+    touchY = ty,
+    touchZ = tz,
   }
 end
 
@@ -388,7 +394,7 @@ end
 ------------------------------------------
 
 local touch = function(_, col)
-  return col.touch.x, col.touch.y, col.touch.z, {}, 0
+  return col.touchX, col.touchY, col.touchZ, {}, 0
 end
 
 local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
@@ -402,22 +408,21 @@ local slide = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alr
   goalY = goalY or y
   goalZ = goalZ or z
 
-  local tch, move = col.touch, col.move
-  if move.x ~= 0 or move.y ~= 0 or move.z ~= 0 then
-    if col.normal.x ~= 0 then
-      goalX = tch.x
+  if col.moveX ~= 0 or col.moveY ~= 0 or col.moveZ ~= 0 then
+    if col.normalX ~= 0 then
+      goalX = col.touchX
     end
-    if col.normal.y ~= 0 then
-      goalY = tch.y
+    if col.normalY ~= 0 then
+      goalY = col.touchY
     end
-    if col.normal.z ~= 0 then
-      goalZ = tch.z
+    if col.normalZ ~= 0 then
+      goalZ = col.touchZ
     end
   end
 
-  col.slide = {x = goalX, y = goalY, z = goalZ}
+  col.slideX, col.slideY, col.slideZ = goalX, goalY, goalZ
 
-  x, y, z = tch.x, tch.y, tch.z
+  x, y, z = col.touchX, col.touchY, col.touchZ
   local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 
   return goalX, goalY, goalZ, cols, len
@@ -428,22 +433,21 @@ local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, al
   goalY = goalY or y
   goalZ = goalZ or z
 
-  local tch, move = col.touch, col.move
-  local tx, ty, tz = tch.x, tch.y, tch.z
+  local tx, ty, tz = col.touchX, col.touchY, col.touchZ
   local bx, by, bz = tx, ty, tz
 
-  if move.x ~= 0 or move.y ~= 0 or move.z ~= 0 then
+  if col.moveX ~= 0 or col.moveY ~= 0 or col.moveZ ~= 0 then
     local bnx = goalX - tx
     local bny = goalY - ty
     local bnz = goalZ - tz
 
-    if col.normal.x ~= 0 then
+    if col.normalX ~= 0 then
       bnx = -bnx
     end
-    if col.normal.y ~= 0 then
+    if col.normalY ~= 0 then
       bny = -bny
     end
-    if col.normal.z ~= 0 then
+    if col.normalZ ~= 0 then
       bnz = -bnz
     end
 
@@ -452,8 +456,8 @@ local bounce = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, al
     bz = tz + bnz
   end
 
-  col.bounce = {x = bx, y = by, z = bz}
-  x, y, z = tch.x, tch.y, tch.z
+  col.bounceX, col.bounceY, col.bounceZ = bx, by, bz
+  x, y, z = col.touchX, col.touchY, col.touchZ
   goalX, goalY, goalZ = bx, by, bz
 
   local cols, len = world:project(col.item, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)

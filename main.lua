@@ -139,11 +139,11 @@ local function updatePlayer(dt)
       consolePrint(("col.other = %s, col.type = %s, col.normal = %d,%d,%d"):format(
         col.other,
         col.type,
-        col.normal.x,
-        col.normal.y,
-        col.normal.z
+        col.normalX,
+        col.normalY,
+        col.normalZ
       ))
-      if col.normal.z ~= 0 then
+      if col.normalZ ~= 0 then
         player.zVelocity = 0
       end
     end
