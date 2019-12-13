@@ -34,13 +34,13 @@ local function doTest(world)
 
   -- move all entities for MOVEMENT_GENERATIONS generations.
   local collisions = 0
-  for i = 1, MOVEMENT_GENERATIONS do
+  for _ = 1, MOVEMENT_GENERATIONS do
     for _, entity in ipairs(entities) do
       local x, y, z = world:getCube(entity)
       local goalX = clamp(0, x - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
       local goalY = clamp(0, y - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
       local goalZ = clamp(0, z - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
-      local _, _, _, cols, len = world:move(entity, goalX, goalY, goalZ)
+      local len = select(5, world:move(entity, goalX, goalY, goalZ))
       collisions = collisions + len
     end
   end
@@ -62,7 +62,7 @@ end
 local function doTests(label, bump)
   print(("============= %s ============="):format(label))
   local totalGarbage = 0
-  for i = 1, TEST_COUNT do
+  for _ = 1, TEST_COUNT do
     local world = bump.newWorld(1)
     local garbage = doTest(world)
     totalGarbage = totalGarbage + garbage
