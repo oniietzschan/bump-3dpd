@@ -10,7 +10,7 @@ local function clamp(lower, val, upper)
   return math.max(lower, math.min(upper, val))
 end
 
-local function doTest(world)
+local function doTest(world, moveFn)
   -- seed RNG
   math.randomseed(RNG_SEED)
 
@@ -40,9 +40,10 @@ local function doTest(world)
       local goalX = clamp(0, x - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
       local goalY = clamp(0, y - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
       local goalZ = clamp(0, z - MOVE_RANGE + (math.random() * MOVE_RANGE * 2), WORLD_SIZE)
-      local len = select(5, world:move(entity, goalX, goalY, goalZ))
+      local len = moveFn(world, entity, goalX, goalY, goalZ)
       collisions = collisions + len
     end
+    -- if world.debug then world.debug() end
   end
 
   -- restart GC and measure memory difference before and after.
@@ -59,12 +60,12 @@ local function doTest(world)
   return kbGarbage
 end
 
-local function doTests(label, bump)
+local function doTests(label, bump, moveFn)
   print(("============= %s ============="):format(label))
   local totalGarbage = 0
   for _ = 1, TEST_COUNT do
     local world = bump.newWorld(1)
-    local garbage = doTest(world)
+    local garbage = doTest(world, moveFn)
     totalGarbage = totalGarbage + garbage
   end
   local averageGarbage = totalGarbage / TEST_COUNT
@@ -72,5 +73,15 @@ local function doTests(label, bump)
   print(("(Average after %d tests.)\n"):format(TEST_COUNT))
 end
 
-doTests('Original', require 'bump-3dpd-original')
-doTests('New', require 'bump-3dpd')
+local function moveOriginalFn(world, entity, goalX, goalY, goalZ)
+  local len = select(5, world:move(entity, goalX, goalY, goalZ))
+  return len
+end
+doTests('Original', require 'bump-3dpd-original', moveOriginalFn)
+
+local function moveModdedFn(world, entity, goalX, goalY, goalZ)
+  local _, _, _, cols, len = world:move(entity, goalX, goalY, goalZ)
+  world.freeCollisionTable(cols)
+  return len
+end
+doTests('New', require 'bump-3dpd', moveModdedFn)

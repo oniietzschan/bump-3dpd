@@ -147,6 +147,8 @@ local function updatePlayer(dt)
         player.zVelocity = 0
       end
     end
+
+    world.freeCollisionTable(cols)
   end
 end
 

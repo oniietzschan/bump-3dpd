@@ -4,8 +4,14 @@ local responses = bump.responses
 
 local world = bump.newWorld()
 
+local getCollision = function(...)
+  local col = detect(...)
+  col.item = {}
+  return col
+end
+
 local touch = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
-  local col = detect(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
+  local col = getCollision(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
 
   return {
     col.touchX,
@@ -18,7 +24,7 @@ local touch = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
 end
 
 local slide = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
-  local col = detect(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
+  local col = getCollision(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
   responses.slide(world, col, x,y,z,w,h,d, goalX, goalY, goalZ)
 
   return {
@@ -35,7 +41,7 @@ local slide = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
 end
 
 local bounce = function(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
-  local col = detect(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
+  local col = getCollision(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
   responses.bounce(world, col, x,y,z,w,h,d, goalX, goalY, goalZ)
 
   return {

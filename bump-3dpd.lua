@@ -1,6 +1,6 @@
 --[[
 
-bump-3dpd 1.0.0
+bump-3dpd 2.0.0
 ===============
 
 bump-3dpd by shru. (see: https://github.com/oniietzschan/bump-3dpd)
@@ -37,7 +37,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -- Table Pool
 ------------------------------------------
 
-local Pool = {}
+local Pool = {
+  -- loaned = 0,
+}
 do
   local ok, tableClear = pcall(require, 'table.clear')
   if not ok then
@@ -53,16 +55,19 @@ do
 
   function Pool.fetch()
     if len == 0 then
+      -- Pool.loaned = Pool.loaned + 1
       Pool.free({})
     end
     local t = table.remove(pool, len)
     len = len - 1
+    -- Pool.loaned = Pool.loaned + 1
     return t
   end
 
   function Pool.free(t)
     tableClear(t)
     len = len + 1
+    -- Pool.loaned = Pool.loaned - 1
     pool[len] = t
   end
 end
@@ -281,20 +286,20 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
     tz = z1 + dz * ti
   end
 
-  return {
-    overlaps = overlaps,
-    ti = ti,
-    distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2),
-    moveX = dx,
-    moveY = dy,
-    moveZ = dz,
-    normalX = nx,
-    normalY = ny,
-    normalZ = nz,
-    touchX = tx,
-    touchY = ty,
-    touchZ = tz,
-  }
+  local col = Pool.fetch()
+  col.overlaps = overlaps
+  col.ti = ti
+  col.distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
+  col.moveX = dx
+  col.moveY = dy
+  col.moveZ = dz
+  col.normalX = nx
+  col.normalY = ny
+  col.normalZ = nz
+  col.touchX = tx
+  col.touchY = ty
+  col.touchZ = tz
+  return col
 end
 
 ------------------------------------------
@@ -394,7 +399,7 @@ end
 ------------------------------------------
 
 local touch = function(_, col)
-  return col.touchX, col.touchY, col.touchZ, {}, 0
+  return col.touchX, col.touchY, col.touchZ, Pool.fetch(), 0
 end
 
 local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
@@ -551,11 +556,13 @@ local function getDictItemsInCellCube(self, cx,cy,cz, cw,ch,cd)
   return items_dict
 end
 
-local function getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
-  local cells, cellsLen, visited = {}, 0, {}
+local getCellsTouchedBySegment
+do
+  local isBusy = false
+  local this, cells, cellsLen, visited
 
-  grid_traverse(self.cellSize, x1,y1,z1,x2,y2,z2, function(cx, cy, cz)
-    local plane = self.cells[cz]
+  local tryGetCell = function(cx, cy, cz)
+    local plane = this.cells[cz]
     if not plane then
       return
     end
@@ -573,9 +580,16 @@ local function getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
     visited[cell] = true
     cellsLen = cellsLen + 1
     cells[cellsLen] = cell
-  end)
+  end
 
-  return cells, cellsLen
+  getCellsTouchedBySegment = function(self, x1,y1,z1,x2,y2,z2)
+    assert(isBusy == false, 'getCellsTouchedBySegment called again before it finished')
+    this, cells, cellsLen, visited, isBusy = self, {}, 0, {}, true
+    grid_traverse(self.cellSize, x1,y1,z1,x2,y2,z2, tryGetCell)
+    isBusy = false
+
+    return cells, cellsLen
+  end
 end
 
 local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filter)
@@ -611,15 +625,6 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
   return itemInfo, itemInfoLen
 end
 
-local function getResponseByName(self, name)
-  local response = self.responses[name]
-  if not response then
-    error(('Unknown collision type: %s (%s)'):format(name, type(name)))
-  end
-
-  return response
-end
-
 
 -- Misc Public Methods
 
@@ -627,18 +632,12 @@ function World:addResponse(name, response)
   self.responses[name] = response
 end
 
-local EMPTY_TABLE = {}
-
 function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
   filter = filter or defaultFilter
 
   local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
-  if projected_len == 0 then
-    return goalX, goalY, goalZ, EMPTY_TABLE, 0
-  end
-
-  local cols, len = {}, 0
+  local cols, len = Pool.fetch(), 0
 
   local visited = Pool.fetch()
   visited[item] = true
@@ -648,10 +647,15 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
     len       = len + 1
     cols[len] = col
 
+    -- Clear projected_cols and all child tables, except index 1.
+    for i = 2, projected_len do
+      Pool.free(projected_cols[i])
+    end
+    Pool.free(projected_cols)
+
     visited[col.other] = true
 
-    local response = getResponseByName(self, col.type)
-
+    local response = self.responses[col.type]
     goalX, goalY, goalZ, projected_cols, projected_len = response(
       self,
       col,
@@ -661,6 +665,9 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
       visited
     )
   end
+
+  Pool.free(visited)
+  Pool.free(projected_cols)
 
   return goalX, goalY, goalZ, cols, len
 end
@@ -673,12 +680,10 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
   goalZ = goalZ or z
   filter = filter or defaultFilter
 
-  local collisions, len = nil, 0
+  local collisions, len = Pool.fetch(), 0
 
   local visited = Pool.fetch()
-  if item ~= nil then
-    visited[item] = true
-  end
+  visited[item] = true
 
   -- This could probably be done with less cells using a polygon raster over the cells instead of a
   -- bounding cube of the whole movement. Conditional to building a queryPolygon method
@@ -711,23 +716,18 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
           col.type  = responseName
 
           len = len + 1
-          if collisions == nil then
-            collisions = {}
-          end
           collisions[len] = col
         end
       end
     end
   end
 
-  Pool.free(visited)
   Pool.free(dictItemsInCellCube)
+  Pool.free(visited)
 
-  if collisions ~= nil then
-    table.sort(collisions, sortByTiAndDistance)
-  end
+  table.sort(collisions, sortByTiAndDistance)
 
-  return collisions or EMPTY_TABLE, len
+  return collisions, len
 end
 
 function World:countCells()
@@ -969,6 +969,17 @@ function World:check(item, goalX, goalY, goalZ, filter)
   return self:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 end
 
+function World.freeCollisionTable(cols)
+  for i = #cols, 1, -1 do
+    Pool.free(cols[i])
+    cols[i] = nil
+  end
+  Pool.free(cols)
+end
+
+-- function World.debug()
+--   print(Pool.loaned)
+-- end
 
 -- Public library functions
 
