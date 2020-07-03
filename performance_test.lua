@@ -43,7 +43,7 @@ local function doTest(world, moveFn)
       local len = moveFn(world, entity, goalX, goalY, goalZ)
       collisions = collisions + len
     end
-    -- if world.debug then world.debug() end
+    if world.debug then world.debug() end
   end
 
   -- restart GC and measure memory difference before and after.
@@ -65,6 +65,7 @@ local function doTests(label, bump, moveFn)
   local totalGarbage = 0
   for _ = 1, TEST_COUNT do
     local world = bump.newWorld(1)
+    world.debug = bump.debug
     local garbage = doTest(world, moveFn)
     totalGarbage = totalGarbage + garbage
   end
@@ -81,7 +82,7 @@ doTests('Original', require 'bump-3dpd-original', moveOriginalFn)
 
 local function moveModdedFn(world, entity, goalX, goalY, goalZ)
   local _, _, _, cols, len = world:move(entity, goalX, goalY, goalZ)
-  world.freeCollisionTable(cols)
+  world.freeCollisions(cols)
   return len
 end
 doTests('New', require 'bump-3dpd', moveModdedFn)

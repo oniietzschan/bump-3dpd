@@ -37,10 +37,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -- Table Pool
 ------------------------------------------
 
-local Pool = {
-  -- loaned = 0,
-}
+local freeTable, fetchTable
+-- local _loaned = 0
 do
+  local pool, len = {}, 0
+
+  -- Future proof for when Mike Pall blesses us with LuaJIT 2.1.0
   local ok, tableClear = pcall(require, 'table.clear')
   if not ok then
     tableClear = function (t)
@@ -50,26 +52,32 @@ do
     end
   end
 
-  local pool = {}
-  local len = 0
-
-  function Pool.fetch()
-    if len == 0 then
-      -- Pool.loaned = Pool.loaned + 1
-      Pool.free({})
-    end
-    local t = table.remove(pool, len)
-    len = len - 1
-    -- Pool.loaned = Pool.loaned + 1
-    return t
-  end
-
-  function Pool.free(t)
+  freeTable = function(t)
     tableClear(t)
     len = len + 1
-    -- Pool.loaned = Pool.loaned - 1
     pool[len] = t
+    -- _loaned = _loaned - 1
   end
+
+  fetchTable = function()
+    if len == 0 then
+      -- _loaned = _loaned + 1
+      freeTable({})
+    end
+    local t = pool[len]
+    pool[len] = nil
+    len = len - 1
+    -- _loaned = _loaned + 1
+    return t
+  end
+end
+
+local function freeCollisions(t)
+  for i = #t, 1, -1 do
+    freeTable(t[i])
+    t[i] = nil
+  end
+  freeTable(t)
 end
 
 ------------------------------------------
@@ -286,7 +294,7 @@ local function cube_detectCollision(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2, goalX,
     tz = z1 + dz * ti
   end
 
-  local col = Pool.fetch()
+  local col = fetchTable()
   col.overlaps = overlaps
   col.ti = ti
   col.distance = cube_getCubeDistance(x1,y1,z1,w1,h1,d1, x2,y2,z2,w2,h2,d2)
@@ -399,7 +407,7 @@ end
 ------------------------------------------
 
 local touch = function(_, col)
-  return col.touchX, col.touchY, col.touchZ, Pool.fetch(), 0
+  return col.touchX, col.touchY, col.touchZ, fetchTable(), 0
 end
 
 local cross = function(world, col, x,y,z,w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
@@ -532,7 +540,7 @@ local function removeItemFromCell(self, item, cx, cy, cz)
 end
 
 local function getDictItemsInCellCube(self, cx,cy,cz, cw,ch,cd)
-  local items_dict = Pool.fetch()
+  local items_dict = fetchTable()
 
   for z = cz, cz + cd - 1 do
     local plane = self.cells[z]
@@ -595,7 +603,7 @@ end
 local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filter)
   local cells, len = getCellsTouchedBySegment(self, x1,y1,z1,x2,y2,z2)
   local cell, cube, x,y,z,w,h,d, ti1, ti2, tii0, tii1
-  local visited, itemInfo, itemInfoLen = Pool.fetch(), Pool.fetch(), 0
+  local visited, itemInfo, itemInfoLen = fetchTable(), fetchTable(), 0
 
   for i = 1, len do
     cell = cells[i]
@@ -618,7 +626,7 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
     end
   end
 
-  Pool.free(visited)
+  freeTable(visited)
 
   table.sort(itemInfo, sortByWeight)
 
@@ -637,9 +645,9 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
   local projected_cols, projected_len = self:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
-  local cols, len = Pool.fetch(), 0
+  local cols, len = fetchTable(), 0
 
-  local visited = Pool.fetch()
+  local visited = fetchTable()
   visited[item] = true
 
   while projected_len > 0 do
@@ -649,9 +657,9 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 
     -- Clear projected_cols and all child tables, except index 1.
     for i = 2, projected_len do
-      Pool.free(projected_cols[i])
+      freeTable(projected_cols[i])
     end
-    Pool.free(projected_cols)
+    freeTable(projected_cols)
 
     visited[col.other] = true
 
@@ -666,8 +674,8 @@ function World:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
     )
   end
 
-  Pool.free(visited)
-  Pool.free(projected_cols)
+  freeTable(visited)
+  freeCollisions(projected_cols)
 
   return goalX, goalY, goalZ, cols, len
 end
@@ -680,9 +688,9 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
   goalZ = goalZ or z
   filter = filter or defaultFilter
 
-  local collisions, len = Pool.fetch(), 0
+  local collisions, len = fetchTable(), 0
 
-  local visited = Pool.fetch()
+  local visited = fetchTable()
   visited[item] = true
 
   -- This could probably be done with less cells using a polygon raster over the cells instead of a
@@ -722,8 +730,8 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
     end
   end
 
-  Pool.free(dictItemsInCellCube)
-  Pool.free(visited)
+  freeTable(dictItemsInCellCube)
+  freeTable(visited)
 
   table.sort(collisions, sortByTiAndDistance)
 
@@ -805,7 +813,7 @@ function World:queryCube(x,y,z,w,h,d, filter)
     end
   end
 
-  Pool.free(dictItemsInCellCube)
+  freeTable(dictItemsInCellCube)
 
   return items, len
 end
@@ -827,7 +835,7 @@ function World:queryPoint(x,y,z, filter)
     end
   end
 
-  Pool.free(dictItemsInCellCube)
+  freeTable(dictItemsInCellCube)
 
   return items, len
 end
@@ -840,7 +848,7 @@ function World:querySegment(x1, y1, z1, x2, y2, z2, filter)
     items[i] = itemInfo[i].item
   end
 
-  Pool.free(itemInfo)
+  freeTable(itemInfo)
 
   return items, len
 end
@@ -969,17 +977,9 @@ function World:check(item, goalX, goalY, goalZ, filter)
   return self:projectMove(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter)
 end
 
-function World.freeCollisionTable(cols)
-  for i = #cols, 1, -1 do
-    Pool.free(cols[i])
-    cols[i] = nil
-  end
-  Pool.free(cols)
-end
-
--- function World.debug()
---   print(Pool.loaned)
--- end
+World.fetchTable = fetchTable
+World.freeCollisions = freeCollisions
+World.freeTable = freeTable
 
 -- Public library functions
 
@@ -1020,5 +1020,12 @@ bump.responses = {
   slide  = slide,
   bounce = bounce
 }
+
+bump.fetchTable = fetchTable
+bump.freeCollisions = freeCollisions
+bump.freeTable = freeTable
+-- bump.debug = function()
+--   print(_loaned)
+-- end
 
 return bump
