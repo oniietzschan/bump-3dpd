@@ -42,7 +42,7 @@ local freeTable, fetchTable
 do
   local pool, len = {}, 0
 
-  -- Future proof for when Mike Pall blesses us with LuaJIT 2.1.0
+  -- Future-proof for when Mike Pall blesses us with LuaJIT 2.1.0!
   local ok, tableClear = pcall(require, 'table.clear')
   if not ok then
     tableClear = function (t)
@@ -607,23 +607,28 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
 
   for i = 1, len do
     cell = cells[i]
-    for item in pairs(cell.items) do
-      if not visited[item] then
-        visited[item] = true
-        if (not filter or filter(item)) then
-          cube = self.cubes[item]
-          x, y, z, w, h, d = cube.x, cube.y, cube.z, cube.w, cube.h, cube.d
-
-          ti1, ti2 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, 0, 1)
-          if ti1 and ((0 < ti1 and ti1 < 1) or (0 < ti2 and ti2 < 1)) then
-            -- the sorting is according to the t of an infinite line, not the segment
-            tii0, tii1 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, -math.huge, math.huge)
-            itemInfoLen = itemInfoLen + 1
-            itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1)}
-          end
-        end
+    for item in pairs(cell.items) do repeat
+      if visited[item] then
+        break -- continue
       end
-    end
+
+      visited[item] = true
+
+      if filter and not filter(item) then
+        break -- continue
+      end
+
+      cube = self.cubes[item]
+      x, y, z, w, h, d = cube.x, cube.y, cube.z, cube.w, cube.h, cube.d
+
+      ti1, ti2 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, 0, 1)
+      if ti1 and ((0 < ti1 and ti1 < 1) or (0 < ti2 and ti2 < 1)) then
+        -- the sorting is according to the t of an infinite line, not the segment
+        tii0, tii1 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, -math.huge, math.huge)
+        itemInfoLen = itemInfoLen + 1
+        itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1)}
+      end
+    until true end
   end
 
   freeTable(visited)
@@ -709,26 +714,31 @@ function World:project(item, x,y,z,w,h,d, goalX,goalY,goalZ, filter, alreadyVisi
 
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  for other, _ in pairs(dictItemsInCellCube) do
-    if not visited[other] and (alreadyVisited == nil or not alreadyVisited[other]) then
-      visited[other] = true
-
-      local responseName = filter(item, other)
-      if responseName then
-        local ox,oy,oz,ow,oh,od = self:getCube(other)
-        local col = cube_detectCollision(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
-
-        if col then
-          col.other = other
-          col.item  = item
-          col.type  = responseName
-
-          len = len + 1
-          collisions[len] = col
-        end
-      end
+  for other, _ in pairs(dictItemsInCellCube) do repeat
+    if visited[other] or (alreadyVisited and alreadyVisited[other]) then
+      break -- continue
     end
-  end
+
+    visited[other] = true
+
+    local responseName = filter(item, other)
+    if not responseName then
+      break -- continue
+    end
+
+    local ox, oy, oz, ow, oh, od = self:getCube(other)
+    local col = cube_detectCollision(x,y,z,w,h,d, ox,oy,oz,ow,oh,od, goalX, goalY, goalZ)
+    if col == nil then
+      break -- continue
+    end
+
+    col.other = other
+    col.item  = item
+    col.type  = responseName
+
+    len = len + 1
+    collisions[len] = col
+  until true end
 
   freeTable(dictItemsInCellCube)
   freeTable(visited)
@@ -797,18 +807,15 @@ function World:queryCube(x,y,z,w,h,d, filter)
   local cx,cy,cz,cw,ch,cd = grid_toCellCube(self.cellSize, x,y,z,w,h,d)
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz,cw,ch,cd)
 
-  local items, len = nil, 0
+  local items, len = fetchTable(), 0
 
   local cube
   for item, _ in pairs(dictItemsInCellCube) do
     cube = self.cubes[item]
     if (not filter or filter(item))
-    and cube_isIntersecting(x,y,z,w,h,d, cube.x, cube.y, cube.z, cube.w, cube.h, cube.d)
+      and cube_isIntersecting(x,y,z,w,h,d, cube.x, cube.y, cube.z, cube.w, cube.h, cube.d)
     then
       len = len + 1
-      if items == nil then
-        items = {}
-      end
       items[len] = item
     end
   end
@@ -822,13 +829,13 @@ function World:queryPoint(x,y,z, filter)
   local cx,cy,cz = self:toCell(x,y,z)
   local dictItemsInCellCube = getDictItemsInCellCube(self, cx,cy,cz, 1,1,1)
 
-  local items, len = {}, 0
+  local items, len = fetchTable(), 0
 
   local cube
   for item,_ in pairs(dictItemsInCellCube) do
     cube = self.cubes[item]
     if (not filter or filter(item))
-    and cube_containsPoint(cube.x, cube.y, cube.z, cube.w, cube.h, cube.d, x, y, z)
+      and cube_containsPoint(cube.x, cube.y, cube.z, cube.w, cube.h, cube.d, x, y, z)
     then
       len = len + 1
       items[len] = item
